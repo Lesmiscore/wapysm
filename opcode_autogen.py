@@ -12,7 +12,13 @@ from . import InstructionBase
 INT_OR_FLOAT = Literal['f', 'i']
 VALID_BITS = Literal[32, 64]
 
-class ConstantInstructionBase(InstructionBase):
+class NumericInstructionBase(InstructionBase):
+    type: INT_OR_FLOAT
+    bits: VALID_BITS
+    op: str
+
+
+class ConstantInstructionBase(NumericInstructionBase):
     type: INT_OR_FLOAT
     value: Union[int, float]
     bits: VALID_BITS
@@ -35,7 +41,7 @@ INT_UNARY_OPERATORS_TYPE = Literal['clz', 'ctz', 'popcnt']
 
 FLOAT_UNARY_OPERATORS_TYPE = Literal['abs', 'neg', 'sqrt', 'ceil', 'floor', 'trunc', 'nearest']
 
-class UnaryOperatorInstructionBase(InstructionBase):
+class UnaryOperatorInstructionBase(NumericInstructionBase):
     type: INT_OR_FLOAT
     bits: VALID_BITS
 
@@ -76,7 +82,7 @@ INT_BINARY_OPERATORS_TYPE = Literal[
 FLOAT_BINARY_OPERATORS_TYPE = Literal[
     'add', 'sub', 'mul', 'div', 'min', 'max', 'copysign']
 
-class BinaryOperatorInstructionBase(InstructionBase):
+class BinaryOperatorInstructionBase(NumericInstructionBase):
     type: INT_OR_FLOAT
     bits: VALID_BITS
 
@@ -117,7 +123,7 @@ INT_TEST_OPERATORS_TYPE = Literal['eqn']
 
 # Integer only
 
-class TestOperatorInstructionBase(InstructionBase):
+class TestOperatorInstructionBase(NumericInstructionBase):
     type: INT_OR_FLOAT
     bits: VALID_BITS
 
@@ -149,7 +155,7 @@ INT_REL_OPERATORS_TYPE = Literal[
 
 FLOAT_REL_OPERATORS_TYPE = Literal['eq', 'ne', 'lt', 'gt', 'le', 'ge']
 
-class RelOperatorInstructionBase(InstructionBase):
+class RelOperatorInstructionBase(NumericInstructionBase):
     type: INT_OR_FLOAT
     bits: VALID_BITS
 
@@ -184,7 +190,7 @@ class {name}(FloatRelInstructionBase):
 '''
 
 pycode += """
-class I32Wrap_I64(InstructionBase):
+class I32Wrap_I64(NumericInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'wrap_i64'
     type: INT_OR_FLOAT = 'i'
@@ -192,7 +198,7 @@ class I32Wrap_I64(InstructionBase):
 
 for fi in ['f', 'i']:
     pycode += f"""
-class I64Extend_i32_{fi}(InstructionBase):
+class I64Extend_i32_{fi}(NumericInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'extend_i32_{fi}'
     type: INT_OR_FLOAT = 'i'
@@ -200,24 +206,24 @@ class I64Extend_i32_{fi}(InstructionBase):
 
 for (nn, mm, fi) in itertools.product([32, 64], [32, 64], ['f', 'i']):
     pycode += f"""
-class I{nn}Trunc_f{mm}_{fi}(InstructionBase):
+class I{nn}Trunc_f{mm}_{fi}(NumericInstructionBase):
     bits: VALID_BITS = {nn}
     op: str = 'trunc_f{mm}_{fi}'
     type: INT_OR_FLOAT = 'i'
 
-class F{nn}Convert_i{mm}_{fi}(InstructionBase):
+class F{nn}Convert_i{mm}_{fi}(NumericInstructionBase):
     bits: VALID_BITS = {nn}
     op: str = 'convert_i{mm}_{fi}'
     type: INT_OR_FLOAT = 'f'
 """
 
 pycode += """
-class F32Demote_f64(InstructionBase):
+class F32Demote_f64(NumericInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'demote_f64'
     type: INT_OR_FLOAT = 'f'
 
-class F64Promote_f32(InstructionBase):
+class F64Promote_f32(NumericInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'promote_f32'
     type: INT_OR_FLOAT = 'f'
@@ -226,12 +232,12 @@ class F64Promote_f32(InstructionBase):
 
 for (nn, mm) in itertools.product([32, 64], [32, 64]):
     pycode += f"""
-class I{nn}Reinterpret_f{mm}(InstructionBase):
+class I{nn}Reinterpret_f{mm}(NumericInstructionBase):
     bits: VALID_BITS = {nn}
     op: str = 'reinterpret_f{mm}'
     type: INT_OR_FLOAT = 'i'
 
-class F{nn}Reinterpret_i{mm}(InstructionBase):
+class F{nn}Reinterpret_i{mm}(NumericInstructionBase):
     bits: VALID_BITS = {nn}
     op: str = 'reinterpret_i{mm}'
     type: INT_OR_FLOAT = 'f'
