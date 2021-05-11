@@ -544,7 +544,7 @@ class I32Trunc_f32_f(InstructionBase):
 
 class F32Convert_i32_f(InstructionBase):
     bits: VALID_BITS = 32
-    op: str = 'convert_f32_f'
+    op: str = 'convert_i32_f'
     type: INT_OR_FLOAT = 'f'
 
 class I32Trunc_f32_i(InstructionBase):
@@ -554,7 +554,7 @@ class I32Trunc_f32_i(InstructionBase):
 
 class F32Convert_i32_i(InstructionBase):
     bits: VALID_BITS = 32
-    op: str = 'convert_f32_i'
+    op: str = 'convert_i32_i'
     type: INT_OR_FLOAT = 'f'
 
 class I32Trunc_f64_f(InstructionBase):
@@ -564,7 +564,7 @@ class I32Trunc_f64_f(InstructionBase):
 
 class F32Convert_i64_f(InstructionBase):
     bits: VALID_BITS = 32
-    op: str = 'convert_f64_f'
+    op: str = 'convert_i64_f'
     type: INT_OR_FLOAT = 'f'
 
 class I32Trunc_f64_i(InstructionBase):
@@ -574,7 +574,7 @@ class I32Trunc_f64_i(InstructionBase):
 
 class F32Convert_i64_i(InstructionBase):
     bits: VALID_BITS = 32
-    op: str = 'convert_f64_i'
+    op: str = 'convert_i64_i'
     type: INT_OR_FLOAT = 'f'
 
 class I64Trunc_f32_f(InstructionBase):
@@ -584,7 +584,7 @@ class I64Trunc_f32_f(InstructionBase):
 
 class F64Convert_i32_f(InstructionBase):
     bits: VALID_BITS = 64
-    op: str = 'convert_f32_f'
+    op: str = 'convert_i32_f'
     type: INT_OR_FLOAT = 'f'
 
 class I64Trunc_f32_i(InstructionBase):
@@ -594,7 +594,7 @@ class I64Trunc_f32_i(InstructionBase):
 
 class F64Convert_i32_i(InstructionBase):
     bits: VALID_BITS = 64
-    op: str = 'convert_f32_i'
+    op: str = 'convert_i32_i'
     type: INT_OR_FLOAT = 'f'
 
 class I64Trunc_f64_f(InstructionBase):
@@ -604,7 +604,7 @@ class I64Trunc_f64_f(InstructionBase):
 
 class F64Convert_i64_f(InstructionBase):
     bits: VALID_BITS = 64
-    op: str = 'convert_f64_f'
+    op: str = 'convert_i64_f'
     type: INT_OR_FLOAT = 'f'
 
 class I64Trunc_f64_i(InstructionBase):
@@ -614,7 +614,7 @@ class I64Trunc_f64_i(InstructionBase):
 
 class F64Convert_i64_i(InstructionBase):
     bits: VALID_BITS = 64
-    op: str = 'convert_f64_i'
+    op: str = 'convert_i64_i'
     type: INT_OR_FLOAT = 'f'
 
 class F32Demote_f64(InstructionBase):

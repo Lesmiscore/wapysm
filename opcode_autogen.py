@@ -207,7 +207,7 @@ class I{nn}Trunc_f{mm}_{fi}(InstructionBase):
 
 class F{nn}Convert_i{mm}_{fi}(InstructionBase):
     bits: VALID_BITS = {nn}
-    op: str = 'convert_f{mm}_{fi}'
+    op: str = 'convert_i{mm}_{fi}'
     type: INT_OR_FLOAT = 'f'
 """
 
