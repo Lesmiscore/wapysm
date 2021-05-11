@@ -1,4 +1,4 @@
-# Part of 2.4 Instructions
+# 2.4.1 Numeric Instructions
 # Automatically generated. DO NOT EDIT
 
 from typing import Literal, Union

@@ -11,7 +11,36 @@ class InstructionBase(object):
 
 # 2.4.1 Numeric Instructions
 
-# See ./opcode_autogen.py
+# See /opcode_autogen.py and ./numeric_generated.py
+
+# 2.4.2 Parametric Instructions
+
+class DropInstruction(InstructionBase):
+    pass
+
+class SelectInstruction(InstructionBase):
+    pass
+
+# 2.4.3 Variable Instructions
+
+class LocalGetInstruction(InstructionBase):
+    localidx: int = 0
+
+class LocalSetInstruction(InstructionBase):
+    localidx: int = 0
+
+class LocalTeeInstruction(InstructionBase):
+    localidx: int = 0
+
+class GlobalGetInstruction(InstructionBase):
+    localidx: int = 0
+
+class GlobalSetInstruction(InstructionBase):
+    localidx: int = 0
+
+# 2.4.4 Memory Instructions
+
+# See /opcode_autogen.py and ./memory_generated.py
 
 # 2.4.5 Control Instructions
 

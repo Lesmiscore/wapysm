@@ -2,7 +2,7 @@
 
 import itertools
 
-pycode = '''# Part of 2.4 Instructions
+pycode = '''# 2.4.1 Numeric Instructions
 # Automatically generated. DO NOT EDIT
 
 from typing import Literal, Union
@@ -245,5 +245,69 @@ class F{nn}Reinterpret_i{mm}(NumericInstructionBase):
 
 print(pycode)
 
-with open('wapysm/opcode/auto.py', 'w') as w:
+with open('wapysm/opcode/numeric_generated.py', 'w') as w:
+    w.write(pycode)
+
+
+
+
+pycode = '''# 2.4.4 Memory Instructions
+# Automatically generated. DO NOT EDIT
+
+from typing import Literal, Optional
+from . import InstructionBase
+
+
+INT_OR_FLOAT = Literal['f', 'i']
+VALID_BITS = Literal[32, 64]
+SIGNED = Optional[Literal['u', 's']]
+
+class MemoryLoadStoreInstructionBase(InstructionBase):
+    type: INT_OR_FLOAT
+    bits: VALID_BITS
+    op: str
+    signed: SIGNED
+    offset: int
+    align: int
+
+'''
+
+for (nn, tpp, fi) in itertools.product([32, 64], ['load', 'store'], 'fi'):
+    pycode += f"""
+class {fi.upper()}{nn}{tpp.capitalize()}(MemoryLoadStoreInstructionBase):
+    type: INT_OR_FLOAT = '{fi}'
+    bits: VALID_BITS = {nn}
+    op: str = '{tpp}'
+    signed: SIGNED = None
+"""
+
+
+for (nn, tpp, store) in itertools.product([32, 64], ['load', 'store'], [8, 16, 32]):
+    if nn <= store:
+        continue
+    part = f"""
+class I{nn}{tpp.capitalize()}{store}**SIGNED**(MemoryLoadStoreInstructionBase):
+    type: INT_OR_FLOAT = 'i'
+    bits: VALID_BITS = {nn}
+"""
+    if tpp == 'store':
+        pycode += part.replace('**SIGNED**', '')
+        pycode += f'''    op: str = '{tpp}{store}'\n    signed: SIGNED = None\n'''
+    else:
+        for signed in 'su':
+            pycode += part.replace('**SIGNED**', f'_{signed}')
+            pycode += f'''    op: str = '{tpp}{store}_{signed}'\n    signed: SIGNED = '{signed}'\n'''
+
+
+pycode += '''
+class MemorySize(InstructionBase):
+    op: str = 'memory.size'
+
+class MemoryGrow(InstructionBase):
+    op: str = 'memory.grow'
+'''
+
+print(pycode)
+
+with open('wapysm/opcode/memory_generated.py', 'w') as w:
     w.write(pycode)
