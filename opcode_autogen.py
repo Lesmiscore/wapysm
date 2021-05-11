@@ -5,7 +5,7 @@ import itertools
 pycode = '''# Part of 2.4 Instructions
 # Automatically generated. DO NOT EDIT
 
-from typing import List, Literal, Union
+from typing import Literal, Union
 from . import InstructionBase
 
 
@@ -115,7 +115,7 @@ pycode += """
 
 INT_TEST_OPERATORS_TYPE = Literal['eqn']
 
-# Float only
+# Integer only
 
 class TestOperatorInstructionBase(InstructionBase):
     type: INT_OR_FLOAT
@@ -125,7 +125,7 @@ class IntTestInstructionBase(TestOperatorInstructionBase):
     op: INT_TEST_OPERATORS_TYPE
     type: INT_OR_FLOAT = 'i'
 
-# Float only
+# Integer only
 
 """
 
@@ -183,6 +183,59 @@ class {name}(FloatRelInstructionBase):
     bits: VALID_BITS = {bits}
 '''
 
+pycode += """
+class I32Wrap_I64(InstructionBase):
+    bits: VALID_BITS = 32
+    op: str = 'wrap_i64'
+    type: INT_OR_FLOAT = 'i'
+"""
+
+for fi in ['f', 'i']:
+    pycode += f"""
+class I64Extend_i32_{fi}(InstructionBase):
+    bits: VALID_BITS = 64
+    op: str = 'extend_i32_{fi}'
+    type: INT_OR_FLOAT = 'i'
+"""
+
+for (nn, mm, fi) in itertools.product([32, 64], [32, 64], ['f', 'i']):
+    pycode += f"""
+class I{nn}Trunc_f{mm}_{fi}(InstructionBase):
+    bits: VALID_BITS = {nn}
+    op: str = 'trunc_f{mm}_{fi}'
+    type: INT_OR_FLOAT = 'i'
+
+class F{nn}Convert_i{mm}_{fi}(InstructionBase):
+    bits: VALID_BITS = {nn}
+    op: str = 'convert_f{mm}_{fi}'
+    type: INT_OR_FLOAT = 'f'
+"""
+
+pycode += """
+class F32Demote_f64(InstructionBase):
+    bits: VALID_BITS = 32
+    op: str = 'demote_f64'
+    type: INT_OR_FLOAT = 'f'
+
+class F64Promote_f32(InstructionBase):
+    bits: VALID_BITS = 64
+    op: str = 'promote_f32'
+    type: INT_OR_FLOAT = 'f'
+"""
+
+
+for (nn, mm) in itertools.product([32, 64], [32, 64]):
+    pycode += f"""
+class I{nn}Reinterpret_f{mm}(InstructionBase):
+    bits: VALID_BITS = {nn}
+    op: str = 'reinterpret_f{mm}'
+    type: INT_OR_FLOAT = 'i'
+
+class F{nn}Reinterpret_i{mm}(InstructionBase):
+    bits: VALID_BITS = {nn}
+    op: str = 'reinterpret_i{mm}'
+    type: INT_OR_FLOAT = 'f'
+"""
 
 print(pycode)
 
