@@ -9,6 +9,10 @@ from wapysm.parser.structure import VALTYPE_TYPE
 class InstructionBase(object):
     pass
 
+# 2.4.1 Numeric Instructions
+
+# See ./opcode_autogen.py
+
 # 2.4.5 Control Instructions
 
 class Unreachable(InstructionBase):
