@@ -1,6 +1,13 @@
 # wapysm
-
 A Python-native WASM interpreter.
+
+# TODO
+- [ ] Implement binary parser (Section 5)
+- [ ] Implement module (Section 2.5)
+- [ ] Implement validation (Section 3)
+- [ ] Implement instruction interpreter (Section 4)
+- [ ] Implement text format parser (Section 6)
+
 
 # Installation
 WIP
