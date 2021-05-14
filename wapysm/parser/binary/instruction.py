@@ -1,10 +1,66 @@
 # 5.4 Instructions
 import io
-from ...opcode.numeric_generated import F32Abs, F32Add, F32Ceil, F32Const, F32Convert_i32_s, F32Convert_i32_u, F32Convert_i64_s, F32Convert_i64_u, F32Copysign, F32Demote_f64, F32Div, F32Eq, F32Floor, F32Ge, F32Gt, F32Le, F32Lt, F32Max, F32Min, F32Mul, F32Ne, F32Nearest, F32Neg, F32Reinterpret_i32, F32Sqrt, F32Sub, F32Trunc, F64Abs, F64Add, F64Ceil, F64Const, F64Convert_i32_s, F64Convert_i32_u, F64Convert_i64_s, F64Convert_i64_u, F64Copysign, F64Div, F64Eq, F64Floor, F64Ge, F64Gt, F64Le, F64Lt, F64Max, F64Min, F64Mul, F64Ne, F64Nearest, F64Neg, F64Promote_f32, F64Reinterpret_i64, F64Sqrt, F64Sub, F64Trunc, I32Add, I32And, I32Clz, I32Const, I32Ctz, I32Div_s, I32Div_u, I32Eq, I32Eqz, I32Gt_s, I32Gt_u, I32Le_s, I32Le_u, I32Lt_s, I32Lt_u, I32Mul, I32Ne, I32Or, I32Popcnt, I32Reinterpret_f32, I32Rem_s, I32Rem_u, I32Rotl, I32Rotr, I32Shl, I32Shr_s, I32Shr_u, I32Sub, I32Trunc_f32_s, I32Trunc_f32_u, I32Trunc_f64_s, I32Trunc_f64_u, I32Wrap_I64, I32Xor, I64Add, I64And, I64Clz, I64Const, I64Ctz, I64Div_s, I64Div_u, I64Eq, I64Eqz, I64Extend_i32_s, I64Extend_i32_u, I64Ge_s, I64Ge_u, I64Gt_s, I64Gt_u, I64Le_s, I64Le_u, I64Lt_s, I64Lt_u, I64Mul, I64Ne, I64Or, I64Popcnt, I64Reinterpret_f64, I64Rem_s, I64Rem_u, I64Rotl, I64Rotr, I64Shl, I64Shr_s, I64Shr_u, I64Sub, I64Trunc_f32_s, I64Trunc_f32_u, I64Trunc_f64_s, I64Trunc_f64_u, I64Xor
-from ...opcode.memory_generated import F32Load, F32Store, F64Load, F64Store, I32Load, I32Load16_s, I32Load16_u, I32Load8_s, I32Load8_u, I32Store, I32Store16, I32Store8, I64Load, I64Load16_s, I64Load16_u, I64Load32_s, I64Load32_u, I64Load8_s, I64Load8_u, I64Store, I64Store16, I64Store32, I64Store8, MemoryGrow, MemorySize
-from ...opcode import Block, Br, BrIf, BrTable, Call, CallIndirect, DropInstruction, GlobalGetInstruction, GlobalSetInstruction, IfElse, InstructionBase, LocalGetInstruction, LocalSetInstruction, LocalTeeInstruction, Loop, Nop, Return, SelectInstruction, Unreachable
 from typing import Dict, List, Literal, Tuple, Type
 
+from ...opcode import (
+    Block, Br, BrIf, BrTable, Call, CallIndirect,
+    DropInstruction, GlobalGetInstruction,
+    GlobalSetInstruction, IfElse, InstructionBase,
+    LocalGetInstruction, LocalSetInstruction,
+    LocalTeeInstruction, Loop, Nop, Return,
+    SelectInstruction, Unreachable
+)
+from ...opcode.memory_generated import (
+    F32Load, F32Store, F64Load, F64Store,
+    I32Load, I32Load8_s, I32Load8_u,
+    I32Load16_s, I32Load16_u, I32Store,
+    I32Store8, I32Store16, I64Load,
+    I64Load8_s, I64Load8_u, I64Load16_s,
+    I64Load16_u, I64Load32_s, I64Load32_u,
+    I64Store, I64Store8, I64Store16,
+    I64Store32, MemoryGrow, MemorySize
+)
+from ...opcode.numeric_generated import (
+    F32Abs, F32Add, F32Ceil, F32Const,
+    F32Convert_i32_s, F32Convert_i32_u,
+    F32Convert_i64_s, F32Convert_i64_u,
+    F32Copysign, F32Demote_f64, F32Div,
+    F32Eq, F32Floor, F32Ge, F32Gt, F32Le,
+    F32Lt, F32Max, F32Min, F32Mul, F32Ne,
+    F32Nearest, F32Neg,
+    F32Reinterpret_i32, F32Sqrt, F32Sub,
+    F32Trunc, F64Abs, F64Add, F64Ceil,
+    F64Const, F64Convert_i32_s,
+    F64Convert_i32_u, F64Convert_i64_s,
+    F64Convert_i64_u, F64Copysign, F64Div,
+    F64Eq, F64Floor, F64Ge, F64Gt, F64Le,
+    F64Lt, F64Max, F64Min, F64Mul, F64Ne,
+    F64Nearest, F64Neg, F64Promote_f32,
+    F64Reinterpret_i64, F64Sqrt, F64Sub,
+    F64Trunc, I32Add, I32And, I32Clz,
+    I32Const, I32Ctz, I32Div_s, I32Div_u,
+    I32Eq, I32Eqz, I32Gt_s, I32Gt_u,
+    I32Le_s, I32Le_u, I32Lt_s, I32Lt_u,
+    I32Mul, I32Ne, I32Or, I32Popcnt,
+    I32Reinterpret_f32, I32Rem_s,
+    I32Rem_u, I32Rotl, I32Rotr, I32Shl,
+    I32Shr_s, I32Shr_u, I32Sub,
+    I32Trunc_f32_s, I32Trunc_f32_u,
+    I32Trunc_f64_s, I32Trunc_f64_u,
+    I32Wrap_I64, I32Xor, I64Add, I64And,
+    I64Clz, I64Const, I64Ctz, I64Div_s,
+    I64Div_u, I64Eq, I64Eqz,
+    I64Extend_i32_s, I64Extend_i32_u,
+    I64Ge_s, I64Ge_u, I64Gt_s, I64Gt_u,
+    I64Le_s, I64Le_u, I64Lt_s, I64Lt_u,
+    I64Mul, I64Ne, I64Or, I64Popcnt,
+    I64Reinterpret_f64, I64Rem_s,
+    I64Rem_u, I64Rotl, I64Rotr, I64Shl,
+    I64Shr_s, I64Shr_u, I64Sub,
+    I64Trunc_f32_s, I64Trunc_f32_u,
+    I64Trunc_f64_s, I64Trunc_f64_u,
+    I64Xor
+)
 
 opcode_table: Dict[int, Type[InstructionBase]] = {
     # 5.4.1 Control Instructions
