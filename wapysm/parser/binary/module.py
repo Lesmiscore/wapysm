@@ -1,7 +1,7 @@
 import io
-from typing import List, Optional, Union
+from typing import List, Union
 from ...opcode import InstructionBase
-from ...parser.binary.byteencode import read_byte, read_functype, read_globaltype, read_leb128_unsigned, read_memtype, read_tabletype, read_utf8, read_valtype, read_vector, read_vector_bytes
+from ...parser.binary.byteencode import read_byte, read_bytes_typesafe, read_functype, read_globaltype, read_int32_le, read_leb128_unsigned, read_memtype, read_tabletype, read_utf8, read_valtype, read_vector, read_vector_bytes
 from ...parser.binary.opcode import read_instructions
 from ...parser.limitlength import LimitedRawIO
 from ...parser.module import WasmData, WasmElemUnresolved, WasmExport, WasmImport, WasmModule
@@ -28,7 +28,7 @@ class WasmGlobalSection():
 class WasmSection():
     section_id: int
     section_content: Union[
-        Optional[bytes],  # custom section and undefined ID
+        bytes,  # custom section and undefined ID
         List[WasmFunctionType],  # type section
         List[WasmImport],  # import section
         List[int],  # function section and start section
@@ -151,7 +151,7 @@ def parse_binary_wasm_sections(stream: io.RawIOBase) -> List[WasmSection]:
         elif section_id == 11:  # data section
             section.section_content = read_vector(limited, read_binary_data_section)
         else:  # custom section and undefined ID
-            section.section_content = limited.read()
+            section.section_content = read_bytes_typesafe(limited)
 
 
         sections.append(section)
@@ -159,5 +159,13 @@ def parse_binary_wasm_sections(stream: io.RawIOBase) -> List[WasmSection]:
     return sections
 
 def parse_binary_wasm_module(stream: io.RawIOBase) -> BinaryWasmModule:
+    magic = read_bytes_typesafe(stream, 4)
+    if magic != b'\x00asm':
+        raise Exception('Input does not have valid WASM header')
+    version = read_int32_le(stream)
+    if version != 1:
+        raise Exception(f'Version {version} is not supported')
+
     module = BinaryWasmModule()
+    sections = parse_binary_wasm_sections(stream)  # noqa: F841
     return module

@@ -12,10 +12,12 @@ from typing import List, Callable, TypeVar
 BIO = io.RawIOBase
 T = TypeVar('T')
 
+
+def read_bytes_typesafe(strm: BIO, size: int = -1) -> bytes:
+    return strm.read(size) or b''
+
 def read_byte(strm: BIO) -> int:
-    buf = strm.read(1)
-    assert buf
-    return struct.unpack('B', buf)[0]
+    return struct.unpack('B', read_bytes_typesafe(strm, 1))[0]
 
 def write_byte(strm: BIO, value: int):
     strm.write(struct.pack('B', value))
@@ -71,21 +73,23 @@ def write_leb128_signed(strm: BIO, value: int):
 
 
 def read_float32(strm: BIO) -> float:
-    buf = strm.read(4)
-    assert buf
-    return struct.unpack('<f', buf)[0]
+    return struct.unpack('<f', read_bytes_typesafe(strm, 4))[0]
 
 def write_float32(strm: BIO, value: float):
     strm.write(struct.pack('<f', value))
 
 
 def read_float64(strm: BIO) -> float:
-    buf = strm.read(4)
-    assert buf
-    return struct.unpack('<d', buf)[0]
+    return struct.unpack('<d', read_bytes_typesafe(strm, 8))[0]
 
 def write_float64(strm: BIO, value: float):
     strm.write(struct.pack('<d', value))
+
+def read_int32_le(strm: BIO) -> int:
+    return struct.unpack('<I', read_bytes_typesafe(strm, 4))[0]
+
+def write_int32_le2(strm: BIO, value: int):
+    strm.write(struct.pack('<I', value))
 
 # wasm-core-1 5.1
 
@@ -105,8 +109,7 @@ def read_vector_bytes(strm: BIO) -> bytes:
     "Short and efficient version of read_vector(stream, read_byte)"
 
     length = read_leb128_unsigned(strm)
-    ret = strm.read(length) or b''
-    return ret
+    return read_bytes_typesafe(strm, length)
 
 def write_vector_bytes(strm: BIO, elements: bytes):
     "Short and efficient version of write_vector(stream, elements, write_byte)"
