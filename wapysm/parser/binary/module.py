@@ -1,11 +1,11 @@
 import io
 from typing import List, Union
 from ...opcode import InstructionBase
-from ...parser.binary.byteencode import read_byte, read_bytes_typesafe, read_functype, read_globaltype, read_int32_le, read_leb128_unsigned, read_memtype, read_tabletype, read_utf8, read_valtype, read_vector, read_vector_bytes
-from ...parser.binary.opcode import read_instructions
-from ...parser.limitlength import LimitedRawIO
-from ...parser.module import WasmData, WasmElemUnresolved, WasmExport, WasmImport, WasmModule
-from ...parser.structure import VALTYPE_TYPE, WasmFunctionType, WasmGlobalType, WasmLimits, WasmTableType
+from ..limitlength import LimitedRawIO
+from ..module import WasmData, WasmElemUnresolved, WasmExport, WasmImport, WasmModule
+from ..structure import VALTYPE_TYPE, WasmFunctionType, WasmGlobalType, WasmLimits, WasmTableType
+from .byteencode import read_byte, read_bytes_typesafe, read_functype, read_globaltype, read_int32_le, read_leb128_unsigned, read_memtype, read_tabletype, read_utf8, read_valtype, read_vector, read_vector_bytes
+from .instruction import read_instructions
 
 
 class BinaryWasmModule(WasmModule):
