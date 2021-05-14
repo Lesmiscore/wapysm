@@ -101,6 +101,18 @@ def write_vector(strm: BIO, elements: List[T], write_function: Callable[[io.RawI
     for element in elements:
         write_function(strm, element)
 
+def read_vector_bytes(strm: BIO) -> bytes:
+    "Short and efficient version of read_vector(stream, read_byte)"
+
+    length = read_leb128_unsigned(strm)
+    ret = strm.read(length) or b''
+    return ret
+
+def write_vector_bytes(strm: BIO, elements: bytes):
+    "Short and efficient version of write_vector(stream, elements, write_byte)"
+
+    write_leb128_unsigned(strm, len(elements))
+    strm.write(elements)
 
 #  5.2.4 Names
 

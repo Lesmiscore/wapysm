@@ -60,6 +60,18 @@ class WasmElem():
     expr: List[InstructionBase]
     init: List[WasmFunction]
 
+class WasmElemUnresolved():
+    "2.5.7 Element Segments but indexes unresolved"
+
+    def __init__(self, tableidx: int, expr: List[InstructionBase], init: List[int]) -> None:
+        self.tableidx = tableidx
+        self.expr = expr
+        self.init = init
+
+    tableidx: int
+    expr: List[InstructionBase]
+    init: List[int]
+
 class WasmData():
     "2.5.8 Data Segments"
     def __init__(self, memidx: int, offset: List[InstructionBase], init: bytes) -> None:
