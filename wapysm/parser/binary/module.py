@@ -1,45 +1,10 @@
 import io
-from typing import List, Union
-from ...opcode import InstructionBase
+from typing import List
 from ..limitlength import LimitedRawIO
-from ..module import WasmData, WasmElemUnresolved, WasmExport, WasmImport, WasmModule
-from ..structure import VALTYPE_TYPE, WasmFunctionType, WasmGlobalType, WasmLimits, WasmTableType
+from ..module import WasmCodeFunction, WasmCodeSection, WasmData, WasmElemUnresolved, WasmExport, WasmGlobalSection, WasmImport, WasmParsedModule, WasmSection
+from ..structure import VALTYPE_TYPE
 from .byteencode import read_byte, read_bytes_typesafe, read_functype, read_globaltype, read_int32_le, read_leb128_unsigned, read_memtype, read_tabletype, read_utf8, read_valtype, read_vector, read_vector_bytes
 from .instruction import read_instructions
-
-
-class BinaryWasmModule(WasmModule):
-    pass
-
-
-class WasmCodeFunction():
-    code_locals: List[List[VALTYPE_TYPE]]
-    expr: List[InstructionBase]
-
-class WasmCodeSection():
-    size: int
-    code: WasmCodeFunction
-
-class WasmGlobalSection():
-    ""
-    gt: WasmGlobalType
-    e: List[InstructionBase]
-
-class WasmSection():
-    section_id: int
-    section_content: Union[
-        bytes,  # custom section and undefined ID
-        List[WasmFunctionType],  # type section
-        List[WasmImport],  # import section
-        List[int],  # function section and start section
-        List[WasmTableType],  # table section
-        List[WasmLimits],  # memory section
-        List[WasmGlobalSection],  # global section
-        List[WasmExport],  # export section
-        List[WasmElemUnresolved],  # element section
-        List[WasmCodeSection],  # code section
-        List[WasmData],  # data section
-    ]
 
 
 def read_binary_import(stream: io.RawIOBase) -> WasmImport:
@@ -158,7 +123,7 @@ def parse_binary_wasm_sections(stream: io.RawIOBase) -> List[WasmSection]:
 
     return sections
 
-def parse_binary_wasm_module(stream: io.RawIOBase) -> BinaryWasmModule:
+def parse_binary_wasm_module(stream: io.RawIOBase) -> WasmParsedModule:
     magic = read_bytes_typesafe(stream, 4)
     if magic != b'\x00asm':
         raise Exception('Input does not have valid WASM header')
@@ -166,6 +131,7 @@ def parse_binary_wasm_module(stream: io.RawIOBase) -> BinaryWasmModule:
     if version != 1:
         raise Exception(f'Version {version} is not supported')
 
-    module = BinaryWasmModule()
-    sections = parse_binary_wasm_sections(stream)  # noqa: F841
+    module = WasmParsedModule()
+    module.version = version
+    module.sections = parse_binary_wasm_sections(stream)  # noqa: F841
     return module

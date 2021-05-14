@@ -94,6 +94,39 @@ class WasmExport():
     exportdesc_type: Literal['func', 'table', 'mem', 'global']
     exportdesc_idx: int
 
+class WasmCodeFunction():
+    code_locals: List[List[VALTYPE_TYPE]]
+    expr: List[InstructionBase]
+
+class WasmCodeSection():
+    size: int
+    code: WasmCodeFunction
+
+class WasmGlobalSection():
+    ""
+    gt: WasmGlobalType
+    e: List[InstructionBase]
+
+class WasmSection():
+    section_id: int
+    section_content: Union[
+        bytes,  # custom section and undefined ID
+        List[WasmFunctionType],  # type section
+        List[WasmImport],  # import section
+        List[int],  # function section and start section
+        List[WasmTableType],  # table section
+        List[WasmLimits],  # memory section
+        List[WasmGlobalSection],  # global section
+        List[WasmExport],  # export section
+        List[WasmElemUnresolved],  # element section
+        List[WasmCodeSection],  # code section
+        List[WasmData],  # data section
+    ]
+
+class WasmParsedModule():
+    version: int
+    sections: List[WasmSection]
+
 class WasmModule():
     # These types are temporary and subject to change
     types: List[WasmType]
