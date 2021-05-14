@@ -119,7 +119,7 @@ class {name}(FloatBiopInstructionBase):
 
 pycode += """
 
-INT_TEST_OPERATORS_TYPE = Literal['eqn']
+INT_TEST_OPERATORS_TYPE = Literal['eqz']
 
 # Integer only
 
@@ -135,7 +135,7 @@ class IntTestInstructionBase(TestOperatorInstructionBase):
 
 """
 
-for (bits, biop) in itertools.product([32, 64], ['eqn']):
+for (bits, biop) in itertools.product([32, 64], ['eqz']):
     name = f'I{bits}{biop.capitalize()}'
     pycode += f'''
 class {name}(IntTestInstructionBase):
@@ -196,7 +196,7 @@ class I32Wrap_I64(NumericInstructionBase):
     type: INT_OR_FLOAT = 'i'
 """
 
-for fi in ['f', 'i']:
+for fi in 'su':
     pycode += f"""
 class I64Extend_i32_{fi}(NumericInstructionBase):
     bits: VALID_BITS = 64
@@ -204,7 +204,7 @@ class I64Extend_i32_{fi}(NumericInstructionBase):
     type: INT_OR_FLOAT = 'i'
 """
 
-for (nn, mm, fi) in itertools.product([32, 64], [32, 64], ['f', 'i']):
+for (nn, mm, fi) in itertools.product([32, 64], [32, 64], 'su'):
     pycode += f"""
 class I{nn}Trunc_f{mm}_{fi}(NumericInstructionBase):
     bits: VALID_BITS = {nn}

@@ -29,7 +29,7 @@ def read_binary_import(stream: io.RawIOBase) -> WasmImport:
 def read_global_section(stream: io.RawIOBase) -> WasmGlobalSection:
     sect = WasmGlobalSection()
     sect.gt = read_globaltype(stream)
-    sect.e = read_instructions(stream)
+    _, sect.e = read_instructions(stream)
     return sect
 
 def read_binary_export(stream: io.RawIOBase) -> WasmExport:
@@ -55,7 +55,7 @@ def read_binary_elem(stream: io.RawIOBase) -> WasmElemUnresolved:
     "5.5.12 Element Section"
 
     tableidx = read_leb128_unsigned(stream)
-    expr = read_instructions(stream)
+    _, expr = read_instructions(stream)
     init = read_vector(stream, read_leb128_unsigned)
     return WasmElemUnresolved(tableidx, expr, init)
 
@@ -76,7 +76,7 @@ def read_binary_code_section(stream: io.RawIOBase) -> WasmCodeSection:
 
 def read_binary_data_section(stream: io.RawIOBase) -> WasmData:
     memidx = read_leb128_unsigned(stream)
-    expr = read_instructions(stream)
+    _, expr = read_instructions(stream)
     data = read_vector_bytes(stream)
     return WasmData(memidx, expr, data)
 
