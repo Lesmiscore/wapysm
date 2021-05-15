@@ -3,9 +3,9 @@ import sys
 import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from wapysm.parser.binary.instruction import opcode_table
+from wapysm.parser.binary.instruction import OPCODE_TABLE
 
 class TestBinaryInstructions(unittest.TestCase):
     def test_opcode_table(self):
-        self.assertEqual(len(opcode_table), len(set(opcode_table.keys())))
-        self.assertEqual(len(opcode_table), len(set(opcode_table.values())))
+        self.assertEqual(len(OPCODE_TABLE), len(set(OPCODE_TABLE.keys())))
+        self.assertEqual(len(OPCODE_TABLE), len(set(OPCODE_TABLE.values())))

@@ -68,17 +68,18 @@ class IfElse(BlockInstructionBase):
 class BranchInstructionBase(InstructionBase):
     labelidx: int = 0
 
-class Br(BlockInstructionBase):
+class Br(BranchInstructionBase):
     "br"
 
-class BrIf(BlockInstructionBase):
+class BrIf(BranchInstructionBase):
     "br_if"
 
-class BrTable(BlockInstructionBase):
+class BrTable(InstructionBase):
     "br_table"
     labelindices: List[int] = []
+    lastlabel: int = 0
 
-class Return(BlockInstructionBase):
+class Return(InstructionBase):
     "return"
 
 

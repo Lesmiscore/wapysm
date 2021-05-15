@@ -1,6 +1,7 @@
 # 5.4 Instructions
 import io
-from typing import Dict, List, Literal, Tuple, Type
+from typing import Dict, List, Literal, Set, Tuple, Type
+from .byteencode import read_byte
 
 from ...opcode import (
     Block, Br, BrIf, BrTable, Call, CallIndirect,
@@ -62,7 +63,7 @@ from ...opcode.numeric_generated import (
     I64Xor
 )
 
-opcode_table: Dict[int, Type[InstructionBase]] = {
+OPCODE_TABLE: Dict[int, Type[InstructionBase]] = {
     # 5.4.1 Control Instructions
     0x00: Unreachable,
     0x01: Nop,
@@ -70,6 +71,7 @@ opcode_table: Dict[int, Type[InstructionBase]] = {
     0x03: Loop,
     0x04: IfElse,
     # 0x05: IfElse, // else branch
+    # 0x0B: End, // end
     0x0C: Br,
     0x0D: BrIf,
     0x0E: BrTable,
@@ -255,8 +257,36 @@ opcode_table: Dict[int, Type[InstructionBase]] = {
     0xBF: F64Reinterpret_i64,
 }
 
+
+# Instruction without operand can be cached
+_INSTRUCTIONS_WITHOUT_OPERANDS: Set[int] = {x for rgn in [
+    (0x00, 0x01),  # unreachable and nop
+    [0x0F],  # return
+    (0x1A, 0x1B),  # drop and select
+    (0x3F, 0x40),  # memory.*
+    range(0x45, 0xBF + 1),  # "All other numeric instructions" in 5.4.5. Numeric Instructions
+] for x in rgn}
+_INSTRUCTION_CACHE: Dict[int, InstructionBase] = {}
+
 READ_FINISH_REASON = Literal['eof', 'else', 'end']
 
 def read_instructions(stream: io.RawIOBase) -> Tuple[READ_FINISH_REASON, List[InstructionBase]]:
     result: List[InstructionBase] = []
-    return 'end', result
+    while True:
+        try:
+            opcode = read_byte(stream)
+        except IndexError:
+            break
+
+        if opcode not in OPCODE_TABLE:
+            raise Exception(f'Unknown opcode: {opcode}')
+        if opcode == 0x0B:  # end of block
+            return 'end', result
+        elif opcode == 0x05:  # end of if block, but else comes next
+            return 'else', result
+        elif opcode in _INSTRUCTIONS_WITHOUT_OPERANDS:
+            inst = _INSTRUCTION_CACHE.get(opcode) or OPCODE_TABLE[opcode]()
+            _INSTRUCTION_CACHE[opcode] = inst
+            result.append(inst)
+
+    return 'eof', result
