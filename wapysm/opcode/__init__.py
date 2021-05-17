@@ -3,7 +3,7 @@
 # and not responsible for parsing binaries or texts.
 
 from typing import List
-from wapysm.parser.structure import VALTYPE_TYPE
+from ..parser.structure import VALTYPE_TYPE
 
 
 class InstructionBase(object):
@@ -23,20 +23,23 @@ class SelectInstruction(InstructionBase):
 
 # 2.4.3 Variable Instructions
 
-class LocalGetInstruction(InstructionBase):
-    localidx: int = 0
+class VariableInstructionBase(InstructionBase):
+    index: int = 0
 
-class LocalSetInstruction(InstructionBase):
-    localidx: int = 0
+class LocalGetInstruction(VariableInstructionBase):
+    pass
 
-class LocalTeeInstruction(InstructionBase):
-    localidx: int = 0
+class LocalSetInstruction(VariableInstructionBase):
+    pass
 
-class GlobalGetInstruction(InstructionBase):
-    localidx: int = 0
+class LocalTeeInstruction(VariableInstructionBase):
+    pass
 
-class GlobalSetInstruction(InstructionBase):
-    localidx: int = 0
+class GlobalGetInstruction(VariableInstructionBase):
+    pass
+
+class GlobalSetInstruction(VariableInstructionBase):
+    pass
 
 # 2.4.4 Memory Instructions
 

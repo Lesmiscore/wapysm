@@ -1,15 +1,15 @@
 # 5.4 Instructions
 import io
-from typing import Dict, List, Literal, Set, Tuple, Type
-from .byteencode import read_byte
+from typing import Dict, List, Literal, Set, Tuple, Type, cast
+from .byteencode import read_blocktype, read_byte, read_leb128_unsigned
 
 from ...opcode import (
-    Block, Br, BrIf, BrTable, Call, CallIndirect,
+    Block, BlockInstructionBase, Br, BrIf, BrTable, Call, CallIndirect,
     DropInstruction, GlobalGetInstruction,
     GlobalSetInstruction, IfElse, InstructionBase,
     LocalGetInstruction, LocalSetInstruction,
     LocalTeeInstruction, Loop, Nop, Return,
-    SelectInstruction, Unreachable
+    SelectInstruction, Unreachable, VariableInstructionBase
 )
 from ...opcode.memory_generated import (
     F32Load, F32Store, F64Load, F64Store,
@@ -287,6 +287,39 @@ def read_instructions(stream: io.RawIOBase) -> Tuple[READ_FINISH_REASON, List[In
         elif opcode in _INSTRUCTIONS_WITHOUT_OPERANDS:
             inst = _INSTRUCTION_CACHE.get(opcode) or OPCODE_TABLE[opcode]()
             _INSTRUCTION_CACHE[opcode] = inst
+            result.append(inst)
+        elif opcode == 0x10:
+            inst = Call()
+            inst.callidx = read_leb128_unsigned(stream)
+            result.append(inst)
+        elif opcode == 0x11:
+            inst = CallIndirect()
+            inst.typeidx = read_leb128_unsigned(stream)
+            read_byte(stream)  # dummy byte?
+            result.append(inst)
+
+        # Block instructions
+        elif opcode == 0x02 or opcode == 0x03:  # block .. end or loop .. end
+            inst = cast(BlockInstructionBase, OPCODE_TABLE[opcode]())
+            inst.resultype = read_blocktype(stream)
+            cause, inst.instr = read_instructions(stream)
+            if cause != 'end':
+                raise Exception(f'"block" or "loop" instruction must end with "end" instruction. was: {cause}')
+            result.append(inst)
+        elif opcode == 0x04:  # if .. (else ..) end
+            inst = IfElse()
+            inst.resultype = read_blocktype(stream)
+            cause, inst.instr = read_instructions(stream)
+            if cause == 'else':
+                cause, inst.else_block = read_instructions(stream)
+            if cause != 'end':
+                raise Exception(f'"if" branch instruction must end with "end" opcode even it contains "else" block. was: {cause}')
+            result.append(inst)
+
+        # Variable Instructions
+        elif 0x20 <= opcode and opcode <= 0x24:  # local.* and global.*
+            inst = cast(VariableInstructionBase, OPCODE_TABLE[opcode]())
+            inst.index = read_leb128_unsigned(stream)
             result.append(inst)
 
     return 'eof', result

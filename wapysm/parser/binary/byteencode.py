@@ -88,7 +88,7 @@ def write_float64(strm: BIO, value: float):
 def read_int32_le(strm: BIO) -> int:
     return struct.unpack('<I', read_bytes_typesafe(strm, 4))[0]
 
-def write_int32_le2(strm: BIO, value: int):
+def write_int32_le(strm: BIO, value: int):
     strm.write(struct.pack('<I', value))
 
 # wasm-core-1 5.1
@@ -136,7 +136,7 @@ def write_valtype(strm: BIO, value: VALTYPE_TYPE):
 
 # 5.3.2 Result Types
 
-def read_blocktype(strm: BIO) -> List[VALTYPE_STRINGS]:
+def read_blocktype(strm: BIO) -> List[VALTYPE_TYPE]:
     num = read_byte(strm)
     if num == 0x40:
         return []
