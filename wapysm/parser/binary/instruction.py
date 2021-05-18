@@ -1,7 +1,7 @@
 # 5.4 Instructions
 import io
 from typing import Dict, List, Literal, Set, Tuple, Type, cast
-from .byteencode import read_blocktype, read_byte, read_leb128_unsigned
+from .byteencode import read_blocktype, read_byte, read_float32, read_float64, read_leb128_unsigned
 
 from ...opcode import (
     Block, BlockInstructionBase, Br, BrIf, BrTable, Call, CallIndirect,
@@ -19,10 +19,10 @@ from ...opcode.memory_generated import (
     I64Load8_s, I64Load8_u, I64Load16_s,
     I64Load16_u, I64Load32_s, I64Load32_u,
     I64Store, I64Store8, I64Store16,
-    I64Store32, MemoryGrow, MemorySize
+    I64Store32, MemoryGrow, MemoryLoadStoreInstructionBase, MemorySize
 )
 from ...opcode.numeric_generated import (
-    F32Abs, F32Add, F32Ceil, F32Const,
+    ConstantInstructionBase, F32Abs, F32Add, F32Ceil, F32Const,
     F32Convert_i32_s, F32Convert_i32_u,
     F32Convert_i64_s, F32Convert_i64_u,
     F32Copysign, F32Demote_f64, F32Div,
@@ -321,5 +321,30 @@ def read_instructions(stream: io.RawIOBase) -> Tuple[READ_FINISH_REASON, List[In
             inst = cast(VariableInstructionBase, OPCODE_TABLE[opcode]())
             inst.index = read_leb128_unsigned(stream)
             result.append(inst)
+
+        # Memory Instructions (except memory.* which is handled above)
+        elif 0x28 <= opcode and opcode <= 0x3E:  # i32.load ~ 164.store
+            inst = cast(MemoryLoadStoreInstructionBase, OPCODE_TABLE[opcode]())
+            inst.align = read_leb128_unsigned(stream)
+            inst.offset = read_leb128_unsigned(stream)
+            result.append(inst)
+
+        # Numeric Instructions (except instructions without operands)
+        elif opcode == 0x41 and opcode == 0x02:
+            inst = cast(ConstantInstructionBase, OPCODE_TABLE[opcode]())
+            inst.value = read_leb128_unsigned(stream)
+            result.append(inst)
+        elif opcode == 0x43:
+            inst = F32Const()
+            inst.value = read_float32(stream)
+            result.append(inst)
+        elif opcode == 0x44:
+            inst = F64Const()
+            inst.value = read_float64(stream)
+            result.append(inst)
+
+        # what else?
+        else:
+            raise Exception(f'Unknown opcode: {opcode}')
 
     return 'eof', result
