@@ -1,10 +1,11 @@
 # 5.4 Instructions
 import io
+import logging
 from typing import Dict, List, Literal, Set, Tuple, Type, cast
-from .byteencode import read_blocktype, read_byte, read_float32, read_float64, read_leb128_unsigned
+from .byteencode import read_blocktype, read_byte, read_float32, read_float64, read_leb128_unsigned, read_vector
 
 from ...opcode import (
-    Block, BlockInstructionBase, Br, BrIf, BrTable, Call, CallIndirect,
+    Block, BlockInstructionBase, Br, BrIf, BrTable, BranchInstructionBase, Call, CallIndirect,
     DropInstruction, GlobalGetInstruction,
     GlobalSetInstruction, IfElse, InstructionBase,
     LocalGetInstruction, LocalSetInstruction,
@@ -62,6 +63,8 @@ from ...opcode.numeric_generated import (
     I64Trunc_f64_s, I64Trunc_f64_u,
     I64Xor
 )
+
+logger = logging.getLogger('wapysm.parser.binary.instruction')
 
 OPCODE_TABLE: Dict[int, Type[InstructionBase]] = {
     # 5.4.1 Control Instructions
@@ -277,13 +280,14 @@ def read_instructions(stream: io.RawIOBase) -> Tuple[READ_FINISH_REASON, List[In
             opcode = read_byte(stream)
         except IndexError:
             break
+        logger.debug('going to parse instruction 0x%02X' % opcode)
 
-        if opcode not in OPCODE_TABLE:
-            raise Exception(f'Unknown opcode: {opcode}')
         if opcode == 0x0B:  # end of block
             return 'end', result
         elif opcode == 0x05:  # end of if block, but else comes next
             return 'else', result
+        elif opcode not in OPCODE_TABLE:
+            raise Exception('Unknown opcode: 0x%02X' % opcode)
         elif opcode in _INSTRUCTIONS_WITHOUT_OPERANDS:
             inst = _INSTRUCTION_CACHE.get(opcode) or OPCODE_TABLE[opcode]()
             _INSTRUCTION_CACHE[opcode] = inst
@@ -315,6 +319,15 @@ def read_instructions(stream: io.RawIOBase) -> Tuple[READ_FINISH_REASON, List[In
             if cause != 'end':
                 raise Exception(f'"if" branch instruction must end with "end" opcode even it contains "else" block. was: {cause}')
             result.append(inst)
+        elif opcode == 0x0C or opcode == 0x0D:  # br*
+            inst = cast(BranchInstructionBase, OPCODE_TABLE[opcode]())
+            inst.labelidx = read_leb128_unsigned(stream)
+            result.append(inst)
+        elif opcode == 0x0E:  # br_table
+            inst = BrTable()
+            inst.labelindices = read_vector(stream, read_leb128_unsigned)
+            inst.lastlabel = read_leb128_unsigned(stream)
+            result.append(inst)
 
         # Variable Instructions
         elif 0x20 <= opcode and opcode <= 0x24:  # local.* and global.*
@@ -330,7 +343,7 @@ def read_instructions(stream: io.RawIOBase) -> Tuple[READ_FINISH_REASON, List[In
             result.append(inst)
 
         # Numeric Instructions (except instructions without operands)
-        elif opcode == 0x41 and opcode == 0x02:
+        elif opcode == 0x41 or opcode == 0x42:
             inst = cast(ConstantInstructionBase, OPCODE_TABLE[opcode]())
             inst.value = read_leb128_unsigned(stream)
             result.append(inst)
@@ -345,6 +358,6 @@ def read_instructions(stream: io.RawIOBase) -> Tuple[READ_FINISH_REASON, List[In
 
         # what else?
         else:
-            raise Exception(f'Unknown opcode: {opcode}')
+            raise Exception('Unreachable 0x%02X' % opcode)
 
     return 'eof', result

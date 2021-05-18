@@ -1,6 +1,6 @@
 # Section 2.5 Modules
 
-from typing import List, Literal, Optional, Union
+from typing import List, Literal, Optional, Tuple, Union
 from ..opcode import InstructionBase
 from .structure import VALTYPE_TYPE, WasmFunctionType, WasmGlobalType, WasmLimits, WasmTableType
 
@@ -95,7 +95,7 @@ class WasmExport():
     exportdesc_idx: int
 
 class WasmCodeFunction():
-    code_locals: List[List[VALTYPE_TYPE]]
+    code_locals: List[Tuple[int, VALTYPE_TYPE]]
     expr: List[InstructionBase]
 
 class WasmCodeSection():

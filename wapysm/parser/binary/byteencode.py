@@ -140,7 +140,7 @@ def read_blocktype(strm: BIO) -> List[VALTYPE_TYPE]:
     num = read_byte(strm)
     if num == 0x40:
         return []
-    return [TYPES_TO_TYPENAME[read_byte(strm)]]  # type: ignore
+    return [TYPES_TO_TYPENAME[num]]  # type: ignore
 
 
 # value has type of List[VALTYPE_TYPE] to allow supporting multiple return types in the future

@@ -1,11 +1,14 @@
 import io
-from typing import List
+import logging
+import struct
+from typing import List, Tuple
 from ..limitlength import LimitedRawIO
 from ..module import WasmCodeFunction, WasmCodeSection, WasmData, WasmElemUnresolved, WasmExport, WasmGlobalSection, WasmImport, WasmParsedModule, WasmSection
 from ..structure import VALTYPE_TYPE
 from .byteencode import read_byte, read_bytes_typesafe, read_functype, read_globaltype, read_int32_le, read_leb128_unsigned, read_memtype, read_tabletype, read_utf8, read_valtype, read_vector, read_vector_bytes
 from .instruction import read_instructions
 
+logger = logging.getLogger('wapysm.parser.binary.module')
 
 def read_binary_import(stream: io.RawIOBase) -> WasmImport:
     "5.5.5 Import Section"
@@ -62,10 +65,13 @@ def read_binary_elem(stream: io.RawIOBase) -> WasmElemUnresolved:
 def read_binary_code_function(stream: io.RawIOBase) -> WasmCodeFunction:
     wcode = WasmCodeFunction()
 
-    def read_locals_nested(stream: io.RawIOBase) -> List[VALTYPE_TYPE]:
-        return read_vector(stream, read_valtype)
+    def read_locals(stream: io.RawIOBase) -> Tuple[int, VALTYPE_TYPE]:
+        n = read_leb128_unsigned(stream)
+        type = read_valtype(stream)
+        return n, type
 
-    wcode.code_locals = read_vector(stream, read_locals_nested)
+    wcode.code_locals = read_vector(stream, read_locals)
+    _, wcode.expr = read_instructions(stream)
     return wcode
 
 def read_binary_code_section(stream: io.RawIOBase) -> WasmCodeSection:
@@ -85,8 +91,9 @@ def parse_binary_wasm_sections(stream: io.RawIOBase) -> List[WasmSection]:
     while True:
         try:
             section_id = read_byte(stream)
-        except AssertionError:
+        except (AssertionError, IndexError, struct.error):
             break
+        logger.debug(f'going to parse section {section_id}')
         section_size: int = read_leb128_unsigned(stream)
 
         section = WasmSection()
