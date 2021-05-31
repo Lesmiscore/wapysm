@@ -8,7 +8,6 @@ A Python-native WASM interpreter.
 - [ ] Implement instruction interpreter (Section 4)
 - [ ] Implement text format parser (Section 6)
 
-
 # Installation
 WIP
 
