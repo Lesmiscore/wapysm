@@ -1,6 +1,6 @@
 # flake8: noqa: E704,E701,E222
 
-from math import copysign, floor, isinf, isnan, sqrt
+from math import copysign, floor, isinf, isnan, sqrt, trunc
 from typing import Tuple, Union
 from wapysm.opcode.numeric_generated import INT_OR_FLOAT, VALID_BITS
 from ..opcode import InstructionBase
@@ -17,28 +17,58 @@ class WasmTrappedException(Exception):
 def trap(op, *operands):
     raise WasmTrappedException('trapped: %s' % repr(op), op, *operands)
 
-def clamp(value: WASM_VALUE) -> WASM_VALUE:
+def clamp(tp: INT_OR_FLOAT, bits: VALID_BITS, value: Union[int, float]) -> WASM_VALUE:
     " Fixes value to its correct size "
-    if value[0] == 'i':
-        if value[1] == 32:
-            return (value[0], value[1], clamp_32bit(value[2]))
-        elif value[1] == 64:
-            return (value[0], value[1], clamp_64bit(value[2]))
+    if tp == 'i':
+        if bits == 32:
+            return (tp, bits, clamp_32bit(value))
+        elif bits == 64:
+            return (tp, bits, clamp_64bit(value))
         else:
-            raise Exception('Invalid bits: %d' % value[1])
-    elif value[0] == 'f':
-        if value[1] == 32:
+            raise Exception('Invalid bits: %d' % bits)
+    elif tp == 'f':
+        if bits == 32:
             pack_arg = 'f<'
-        elif value[1] == 64:
+        elif bits == 64:
             pack_arg = 'd<'
         else:
-            raise Exception('Invalid bits: %d' % value[1])
-        return (value[0], value[1], struct.unpack(pack_arg, struct.pack(pack_arg, value[2]))[0])
+            raise Exception('Invalid bits: %d' % bits)
+        return (tp, bits, struct.unpack(pack_arg, struct.pack(pack_arg, value))[0])
     else:
         raise Exception('Invalid WASM value: %s' % repr(value))
 
+# convert to unsigned number
 def clamp_32bit(value): return value & (2**32 - 1)
 def clamp_64bit(value): return value & (2**64 - 1)
+def clamp_anybit(value: int, bits: VALID_BITS): return value & (2**bits - 1)
+
+# convert to signed number
+def unclamp_32bit(value: int) -> int:
+    if value < 0:
+        # no need to unclamp: in-Python negative numbers are not eligible
+        return value
+    if value & (2**31) == 0:
+        # not a negative number
+        return value
+    # pack the number as unsigned, unpack it as signed
+    return struct.unpack('i>', struct.pack('I>', value))[0]
+
+def unclamp_64bit(value: int) -> int:
+    if value < 0:
+        # no need to unclamp: in-Python negative numbers are not eligible
+        return value
+    if value & (2**63) == 0:
+        # not a negative number
+        return value
+    # pack the number as unsigned, unpack it as signed
+    return struct.unpack('l>', struct.pack('L>', value))[0]
+
+def unclamp_anybit(value: int, bits: VALID_BITS):
+    if bits == 32:
+        return unclamp_32bit(value)
+    else:
+        return unclamp_64bit(value)
+
 
 def count_lead_and_trail_zeroes(d):
     # https://graphics.stanford.edu/~seander/bithacks.html#ZerosOnRightLinear
@@ -175,7 +205,6 @@ def wasm_ipopcnt(value: int, bits: VALID_BITS) -> int:
     else:
         return wasm_ipopcnt64(value)
 
-
 # https://github.com/AdoptOpenJDK/openjdk-jdk11/blob/master/src/java.base/share/classes/java/lang/Integer.java#L1670
 def wasm_ipopcnt32(i: int) -> int:
     # this is required because Java has 32-bit signed integer but Python don't
@@ -200,3 +229,42 @@ def wasm_ipopcnt64(i: int) -> int:
     i = i + (i >> 16)
     i = i + (i >> 32)
     return i & 0x7f
+
+
+def wasm_iadd(a: int, b: int, bits: VALID_BITS) -> int:
+    " 4.3.2.3. iadd "
+    return clamp_anybit(a + b, bits)
+
+def wasm_isub(a: int, b: int, bits: VALID_BITS) -> int:
+    " 4.3.2.4. isub "
+    return clamp_anybit(a - b, bits)
+
+def wasm_imul(a: int, b: int, bits: VALID_BITS) -> int:
+    " 4.3.2.5. imul "
+    return clamp_anybit(a * b, bits)
+
+
+def wasm_idiv_unsigned(a: int, b: int, bits: VALID_BITS) -> int:
+    " 4.3.2.6. idiv_u "
+    if b == 0:
+        trap('DIV/0!', a, b)
+    return clamp_anybit(a, bits) // clamp_anybit(b, bits)
+
+def wasm_idiv_signed(a: int, b: int, bits: VALID_BITS) -> int:
+    " 4.3.2.7. idiv_s "
+    if b == 0:
+        trap('DIV/0!', a, b)
+    return unclamp_anybit(a, bits) // unclamp_anybit(b, bits)
+
+
+def wasm_irem_unsigned(a: int, b: int, bits: VALID_BITS) -> int:
+    " 4.3.2.8. irem_u "
+    if b == 0:
+        trap('DIV/0!', a, b)
+    return a - wasm_imul(b, wasm_idiv_unsigned(a, b, bits), bits)
+
+def wasm_irem_signed(a: int, b: int, bits: VALID_BITS) -> int:
+    " 4.3.2.9. irem_s "
+    if b == 0:
+        trap('DIV/0!', a, b)
+    return a - wasm_imul(b, wasm_idiv_signed(a, b, bits), bits)
