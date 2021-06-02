@@ -259,12 +259,22 @@ def wasm_idiv_signed(a: int, b: int, bits: VALID_BITS) -> int:
 
 def wasm_irem_unsigned(a: int, b: int, bits: VALID_BITS) -> int:
     " 4.3.2.8. irem_u "
-    if b == 0:
-        trap('DIV/0!', a, b)
     return a - wasm_imul(b, wasm_idiv_unsigned(a, b, bits), bits)
 
 def wasm_irem_signed(a: int, b: int, bits: VALID_BITS) -> int:
     " 4.3.2.9. irem_s "
-    if b == 0:
-        trap('DIV/0!', a, b)
     return a - wasm_imul(b, wasm_idiv_signed(a, b, bits), bits)
+
+
+def wasm_ishl(a: int, b: int, bits: VALID_BITS) -> int:
+    " 4.3.2.13. ishl "
+    return clamp_anybit(a, bits) << b
+
+def wasm_ishr_unsigned(a: int, b: int, bits: VALID_BITS) -> int:
+    " 4.3.2.14. ishr_u "
+    return clamp_anybit(a, bits) >> b
+
+def wasm_ishr_signed(a: int, b: int, bits: VALID_BITS) -> int:
+    " 4.3.2.15. ishr_s "
+    a = unclamp_anybit(a, bits)
+    return a >> b
