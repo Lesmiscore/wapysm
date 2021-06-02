@@ -1,7 +1,7 @@
 from typing import Callable, Dict, List, Optional, Tuple, Union, cast
 from math import ceil, copysign, floor, trunc
 
-from ...execute.utils import WASM_VALUE, clamp, trap, wasm_fnearest, wasm_fsqrt, wasm_iadd, wasm_iclz, wasm_ictz, wasm_idiv_signed, wasm_idiv_unsigned, wasm_imul, wasm_ipopcnt, wasm_irem_signed, wasm_ishl, wasm_ishr_signed, wasm_ishr_unsigned, wasm_isub
+from ...execute.utils import WASM_VALUE, clamp, trap, wasm_fnearest, wasm_fsqrt, wasm_iadd, wasm_iclz, wasm_ictz, wasm_idiv_signed, wasm_idiv_unsigned, wasm_imul, wasm_ipopcnt, wasm_irem_signed, wasm_irotl, wasm_irotr, wasm_ishl, wasm_ishr_signed, wasm_ishr_unsigned, wasm_isub
 from ...execute.context import WasmMemoryInstance
 from ...parser.structure import VALTYPE_TYPE
 from ...opcode.numeric_generated import BinaryOperatorInstructionBase, ConstantInstructionBase, UnaryOperatorInstructionBase, VALID_BITS
@@ -50,12 +50,11 @@ BIOP_FUNC: Dict[
     'iand': lambda a, b, _: a & b,
     'ior': lambda a, b, _: a | b,
     'ixor': lambda a, b, _: a ^ b,
-
     'ishl': wasm_ishl,
     'ishr_s': wasm_ishr_signed,
     'ishr_u': wasm_ishr_unsigned,
-    'irotl': lambda a, b, _: a + b,
-    'irotr': lambda a, b, _: a + b,
+    'irotl': wasm_irotl,
+    'irotr': wasm_irotr,
 
     # Float binary operators
     'fadd': lambda a, b, _: a + b,

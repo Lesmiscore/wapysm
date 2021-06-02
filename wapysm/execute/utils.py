@@ -278,3 +278,12 @@ def wasm_ishr_signed(a: int, b: int, bits: VALID_BITS) -> int:
     " 4.3.2.15. ishr_s "
     a = unclamp_anybit(a, bits)
     return a >> b
+
+
+def wasm_irotl(i: int, distance: int, bits: VALID_BITS) -> int:
+    " 4.3.2.16. irotl "
+    return wasm_ishl(i, distance, bits) | wasm_ishr_unsigned(i, bits - distance, bits)
+
+def wasm_irotr(i: int, distance: int, bits: VALID_BITS) -> int:
+    " 4.3.2.17. irotr "
+    return wasm_ishr_unsigned(i, distance, bits) | wasm_ishl(i, bits - distance, bits)
