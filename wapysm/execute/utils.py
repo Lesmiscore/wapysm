@@ -19,6 +19,8 @@ def trap(op, *operands):
 
 def clamp(tp: INT_OR_FLOAT, bits: VALID_BITS, value: Union[int, float]) -> WASM_VALUE:
     " Fixes value to its correct size "
+    if isinstance(value, bool):
+        value = 1 if value else 0
     if tp == 'i':
         if bits == 32:
             return (tp, bits, clamp_32bit(value))
@@ -287,3 +289,45 @@ def wasm_irotl(i: int, distance: int, bits: VALID_BITS) -> int:
 def wasm_irotr(i: int, distance: int, bits: VALID_BITS) -> int:
     " 4.3.2.17. irotr "
     return wasm_ishr_unsigned(i, distance, bits) | wasm_ishl(i, bits - distance, bits)
+
+
+def wasm_ieqz(a: int, bits: VALID_BITS) -> bool:
+    " 4.3.2.21. ieqz "
+    return clamp_anybit(a, bits) == 0
+
+
+def wasm_ieq(a: int, b: int, bits: VALID_BITS) -> bool:
+    " 4.3.2.22. ieq "
+    return clamp_anybit(a, bits) == clamp_anybit(b, bits)
+
+def wasm_ine(a: int, b: int, bits: VALID_BITS) -> bool:
+    " 4.3.2.23. ine "
+    return clamp_anybit(a, bits) != clamp_anybit(b, bits)
+
+
+def wasm_ilt_unsigned(a: int, b: int, bits: VALID_BITS) -> bool:
+    return clamp_anybit(a, bits) < clamp_anybit(b, bits)
+
+def wasm_ilt_signed(a: int, b: int, bits: VALID_BITS) -> bool:
+    return unclamp_anybit(a, bits) < unclamp_anybit(b, bits)
+
+
+def wasm_igt_unsigned(a: int, b: int, bits: VALID_BITS) -> bool:
+    return clamp_anybit(a, bits) > clamp_anybit(b, bits)
+
+def wasm_igt_signed(a: int, b: int, bits: VALID_BITS) -> bool:
+    return unclamp_anybit(a, bits) > unclamp_anybit(b, bits)
+
+
+def wasm_ile_unsigned(a: int, b: int, bits: VALID_BITS) -> bool:
+    return clamp_anybit(a, bits) <= clamp_anybit(b, bits)
+
+def wasm_ile_signed(a: int, b: int, bits: VALID_BITS) -> bool:
+    return unclamp_anybit(a, bits) <= unclamp_anybit(b, bits)
+
+
+def wasm_ige_unsigned(a: int, b: int, bits: VALID_BITS) -> bool:
+    return clamp_anybit(a, bits) >= clamp_anybit(b, bits)
+
+def wasm_ige_signed(a: int, b: int, bits: VALID_BITS) -> bool:
+    return unclamp_anybit(a, bits) >= unclamp_anybit(b, bits)

@@ -1,12 +1,23 @@
-from typing import Callable, Dict, List, Optional, Tuple, Union, cast
 from math import ceil, copysign, floor, trunc
+from typing import Callable, Dict, List, Optional, Tuple, Union, cast
 
-from ...execute.utils import WASM_VALUE, clamp, trap, wasm_fnearest, wasm_fsqrt, wasm_iadd, wasm_iclz, wasm_ictz, wasm_idiv_signed, wasm_idiv_unsigned, wasm_imul, wasm_ipopcnt, wasm_irem_signed, wasm_irotl, wasm_irotr, wasm_ishl, wasm_ishr_signed, wasm_ishr_unsigned, wasm_isub
 from ...execute.context import WasmMemoryInstance
-from ...parser.structure import VALTYPE_TYPE
-from ...opcode.numeric_generated import BinaryOperatorInstructionBase, ConstantInstructionBase, UnaryOperatorInstructionBase, VALID_BITS
+from ...execute.utils import (
+    WASM_VALUE, clamp, trap, wasm_fnearest,
+    wasm_fsqrt, wasm_iadd, wasm_iclz, wasm_ictz,
+    wasm_idiv_signed, wasm_idiv_unsigned, wasm_ieq, wasm_ieqz, wasm_ige_signed, wasm_ige_unsigned, wasm_igt_signed, wasm_igt_unsigned, wasm_ile_signed, wasm_ile_unsigned, wasm_ilt_signed, wasm_ilt_unsigned,
+    wasm_imul, wasm_ine, wasm_ipopcnt, wasm_irem_signed,
+    wasm_irotl, wasm_irotr, wasm_ishl,
+    wasm_ishr_signed, wasm_ishr_unsigned, wasm_isub)
 from ...opcode import Block, InstructionBase, Nop, Unreachable
-
+from ...opcode.numeric_generated import (
+    RelOperatorInstructionBase,
+    VALID_BITS,
+    BinaryOperatorInstructionBase,
+    ConstantInstructionBase,
+    TestOperatorInstructionBase,
+    UnaryOperatorInstructionBase)
+from ...parser.structure import VALTYPE_TYPE
 
 UNOP_FUNC: Dict[
     str,
@@ -65,6 +76,44 @@ BIOP_FUNC: Dict[
     'fmax': lambda a, b, _: max(a, b),
     'fcopysign': lambda a, b, _: copysign(a, b),
 }
+TESTOP_FUNC: Dict[
+    str,
+    Union[
+        Callable[..., bool],  # see above for expected types
+    ]
+] = {
+    # Integer binary operators
+    'ieqz': wasm_ieqz,
+
+    # Float binary operators
+    # ... none.
+}
+RELOP_FUNC: Dict[
+    str,
+    Union[
+        Callable[..., bool],  # see above for expected types
+    ]
+] = {
+    # Integer relation operators
+    'ieq': wasm_ieq,
+    'ine': wasm_ine,
+    'ilt_u': wasm_ilt_unsigned,
+    'ilt_s': wasm_ilt_signed,
+    'igt_u': wasm_igt_unsigned,
+    'igt_s': wasm_igt_signed,
+    'ile_u': wasm_ile_unsigned,
+    'ile_s': wasm_ile_signed,
+    'ige_u': wasm_ige_unsigned,
+    'ige_s': wasm_ige_signed,
+
+    # Float relation operators
+    'feq': lambda a, b, _: a == b,
+    'fne': lambda a, b, _: a != b,
+    'flt': lambda a, b, _: a < b,
+    'fgt': lambda a, b, _: a > b,
+    'fle': lambda a, b, _: a <= b,
+    'fge': lambda a, b, _: a >= b,
+}
 
 
 
@@ -99,6 +148,15 @@ def interpret_wasm_section(code: List[InstructionBase], memory: WasmMemoryInstan
             operand_c1 = cast(int, stack.pop())
             biopfunc = BIOP_FUNC[f'{op.type}{op.op}']
             stack.append(clamp(op.type, op.bits, biopfunc(operand_c1, operand_c2, op.bits)))
+        elif isinstance(op, TestOperatorInstructionBase):
+            operand_c1 = cast(int, stack.pop())
+            testopfunc = TESTOP_FUNC[f'{op.type}{op.op}']
+            stack.append(clamp(op.type, op.bits, testopfunc(operand_c1, op.bits)))
+        elif isinstance(op, RelOperatorInstructionBase):
+            operand_c2 = cast(int, stack.pop())
+            operand_c1 = cast(int, stack.pop())
+            relopfunc = RELOP_FUNC[f'{op.type}{op.op}']
+            stack.append(clamp(op.type, op.bits, relopfunc(operand_c1, operand_c2, op.bits)))
 
 
     return stack[-1], stack
