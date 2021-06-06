@@ -190,7 +190,11 @@ class {name}(FloatRelInstructionBase):
 '''
 
 pycode += """
-class I32Wrap_I64(NumericInstructionBase):
+
+class CvtInstructionBase(NumericInstructionBase):
+    pass
+
+class I32Wrap_I64(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'wrap_i64'
     type: INT_OR_FLOAT = 'i'
@@ -198,7 +202,7 @@ class I32Wrap_I64(NumericInstructionBase):
 
 for fi in 'su':
     pycode += f"""
-class I64Extend_i32_{fi}(NumericInstructionBase):
+class I64Extend_i32_{fi}(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'extend_i32_{fi}'
     type: INT_OR_FLOAT = 'i'
@@ -206,24 +210,24 @@ class I64Extend_i32_{fi}(NumericInstructionBase):
 
 for (nn, mm, fi) in itertools.product([32, 64], [32, 64], 'su'):
     pycode += f"""
-class I{nn}Trunc_f{mm}_{fi}(NumericInstructionBase):
+class I{nn}Trunc_f{mm}_{fi}(CvtInstructionBase):
     bits: VALID_BITS = {nn}
     op: str = 'trunc_f{mm}_{fi}'
     type: INT_OR_FLOAT = 'i'
 
-class F{nn}Convert_i{mm}_{fi}(NumericInstructionBase):
+class F{nn}Convert_i{mm}_{fi}(CvtInstructionBase):
     bits: VALID_BITS = {nn}
     op: str = 'convert_i{mm}_{fi}'
     type: INT_OR_FLOAT = 'f'
 """
 
 pycode += """
-class F32Demote_f64(NumericInstructionBase):
+class F32Demote_f64(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'demote_f64'
     type: INT_OR_FLOAT = 'f'
 
-class F64Promote_f32(NumericInstructionBase):
+class F64Promote_f32(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'promote_f32'
     type: INT_OR_FLOAT = 'f'
@@ -232,12 +236,12 @@ class F64Promote_f32(NumericInstructionBase):
 
 for (nn, mm) in itertools.product([32, 64], [32, 64]):
     pycode += f"""
-class I{nn}Reinterpret_f{mm}(NumericInstructionBase):
+class I{nn}Reinterpret_f{mm}(CvtInstructionBase):
     bits: VALID_BITS = {nn}
     op: str = 'reinterpret_f{mm}'
     type: INT_OR_FLOAT = 'i'
 
-class F{nn}Reinterpret_i{mm}(NumericInstructionBase):
+class F{nn}Reinterpret_i{mm}(CvtInstructionBase):
     bits: VALID_BITS = {nn}
     op: str = 'reinterpret_i{mm}'
     type: INT_OR_FLOAT = 'f'

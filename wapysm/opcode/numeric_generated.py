@@ -528,147 +528,151 @@ class F64Ge(FloatRelInstructionBase):
     op: FLOAT_REL_OPERATORS_TYPE = 'ge'
     bits: VALID_BITS = 64
 
-class I32Wrap_I64(NumericInstructionBase):
+
+class CvtInstructionBase(NumericInstructionBase):
+    pass
+
+class I32Wrap_I64(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'wrap_i64'
     type: INT_OR_FLOAT = 'i'
 
-class I64Extend_i32_s(NumericInstructionBase):
+class I64Extend_i32_s(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'extend_i32_s'
     type: INT_OR_FLOAT = 'i'
 
-class I64Extend_i32_u(NumericInstructionBase):
+class I64Extend_i32_u(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'extend_i32_u'
     type: INT_OR_FLOAT = 'i'
 
-class I32Trunc_f32_s(NumericInstructionBase):
+class I32Trunc_f32_s(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'trunc_f32_s'
     type: INT_OR_FLOAT = 'i'
 
-class F32Convert_i32_s(NumericInstructionBase):
+class F32Convert_i32_s(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'convert_i32_s'
     type: INT_OR_FLOAT = 'f'
 
-class I32Trunc_f32_u(NumericInstructionBase):
+class I32Trunc_f32_u(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'trunc_f32_u'
     type: INT_OR_FLOAT = 'i'
 
-class F32Convert_i32_u(NumericInstructionBase):
+class F32Convert_i32_u(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'convert_i32_u'
     type: INT_OR_FLOAT = 'f'
 
-class I32Trunc_f64_s(NumericInstructionBase):
+class I32Trunc_f64_s(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'trunc_f64_s'
     type: INT_OR_FLOAT = 'i'
 
-class F32Convert_i64_s(NumericInstructionBase):
+class F32Convert_i64_s(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'convert_i64_s'
     type: INT_OR_FLOAT = 'f'
 
-class I32Trunc_f64_u(NumericInstructionBase):
+class I32Trunc_f64_u(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'trunc_f64_u'
     type: INT_OR_FLOAT = 'i'
 
-class F32Convert_i64_u(NumericInstructionBase):
+class F32Convert_i64_u(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'convert_i64_u'
     type: INT_OR_FLOAT = 'f'
 
-class I64Trunc_f32_s(NumericInstructionBase):
+class I64Trunc_f32_s(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'trunc_f32_s'
     type: INT_OR_FLOAT = 'i'
 
-class F64Convert_i32_s(NumericInstructionBase):
+class F64Convert_i32_s(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'convert_i32_s'
     type: INT_OR_FLOAT = 'f'
 
-class I64Trunc_f32_u(NumericInstructionBase):
+class I64Trunc_f32_u(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'trunc_f32_u'
     type: INT_OR_FLOAT = 'i'
 
-class F64Convert_i32_u(NumericInstructionBase):
+class F64Convert_i32_u(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'convert_i32_u'
     type: INT_OR_FLOAT = 'f'
 
-class I64Trunc_f64_s(NumericInstructionBase):
+class I64Trunc_f64_s(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'trunc_f64_s'
     type: INT_OR_FLOAT = 'i'
 
-class F64Convert_i64_s(NumericInstructionBase):
+class F64Convert_i64_s(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'convert_i64_s'
     type: INT_OR_FLOAT = 'f'
 
-class I64Trunc_f64_u(NumericInstructionBase):
+class I64Trunc_f64_u(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'trunc_f64_u'
     type: INT_OR_FLOAT = 'i'
 
-class F64Convert_i64_u(NumericInstructionBase):
+class F64Convert_i64_u(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'convert_i64_u'
     type: INT_OR_FLOAT = 'f'
 
-class F32Demote_f64(NumericInstructionBase):
+class F32Demote_f64(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'demote_f64'
     type: INT_OR_FLOAT = 'f'
 
-class F64Promote_f32(NumericInstructionBase):
+class F64Promote_f32(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'promote_f32'
     type: INT_OR_FLOAT = 'f'
 
-class I32Reinterpret_f32(NumericInstructionBase):
+class I32Reinterpret_f32(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'reinterpret_f32'
     type: INT_OR_FLOAT = 'i'
 
-class F32Reinterpret_i32(NumericInstructionBase):
+class F32Reinterpret_i32(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'reinterpret_i32'
     type: INT_OR_FLOAT = 'f'
 
-class I32Reinterpret_f64(NumericInstructionBase):
+class I32Reinterpret_f64(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'reinterpret_f64'
     type: INT_OR_FLOAT = 'i'
 
-class F32Reinterpret_i64(NumericInstructionBase):
+class F32Reinterpret_i64(CvtInstructionBase):
     bits: VALID_BITS = 32
     op: str = 'reinterpret_i64'
     type: INT_OR_FLOAT = 'f'
 
-class I64Reinterpret_f32(NumericInstructionBase):
+class I64Reinterpret_f32(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'reinterpret_f32'
     type: INT_OR_FLOAT = 'i'
 
-class F64Reinterpret_i32(NumericInstructionBase):
+class F64Reinterpret_i32(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'reinterpret_i32'
     type: INT_OR_FLOAT = 'f'
 
-class I64Reinterpret_f64(NumericInstructionBase):
+class I64Reinterpret_f64(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'reinterpret_f64'
     type: INT_OR_FLOAT = 'i'
 
-class F64Reinterpret_i64(NumericInstructionBase):
+class F64Reinterpret_i64(CvtInstructionBase):
     bits: VALID_BITS = 64
     op: str = 'reinterpret_i64'
     type: INT_OR_FLOAT = 'f'

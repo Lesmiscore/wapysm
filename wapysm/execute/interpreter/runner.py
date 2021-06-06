@@ -1,5 +1,5 @@
 from math import ceil, copysign, floor, trunc
-from typing import Callable, Dict, List, Optional, Tuple, Union, cast
+from typing import Callable, Dict, List, Optional, Tuple, Type, Union, cast
 
 from ...execute.context import WasmMemoryInstance
 from ...execute.utils import (
@@ -11,6 +11,32 @@ from ...execute.utils import (
     wasm_ishr_signed, wasm_ishr_unsigned, wasm_isub)
 from ...opcode import Block, InstructionBase, Nop, Unreachable
 from ...opcode.numeric_generated import (
+    CvtInstructionBase,
+    F32Convert_i32_s,
+    F32Convert_i32_u,
+    F32Convert_i64_s,
+    F32Convert_i64_u,
+    F32Demote_f64,
+    F32Reinterpret_i32,
+    F64Convert_i32_s,
+    F64Convert_i32_u,
+    F64Convert_i64_s,
+    F64Convert_i64_u,
+    F64Promote_f32,
+    F64Reinterpret_i64,
+    I32Reinterpret_f32,
+    I32Trunc_f32_s,
+    I32Trunc_f32_u,
+    I32Trunc_f64_s,
+    I32Trunc_f64_u,
+    I32Wrap_I64,
+    I64Extend_i32_s,
+    I64Extend_i32_u,
+    I64Reinterpret_f64,
+    I64Trunc_f32_s,
+    I64Trunc_f32_u,
+    I64Trunc_f64_s,
+    I64Trunc_f64_u,
     RelOperatorInstructionBase,
     VALID_BITS,
     BinaryOperatorInstructionBase,
@@ -114,6 +140,40 @@ RELOP_FUNC: Dict[
     'fle': lambda a, b, _: a <= b,
     'fge': lambda a, b, _: a >= b,
 }
+CVTOP_FUNC: Dict[
+    Type[CvtInstructionBase],
+    Callable[[Union[int, float]], Union[int, float]]
+] = {
+    I32Wrap_I64: lambda a: a,
+    I64Extend_i32_u: lambda a: a,
+    I64Extend_i32_s: lambda a: a,
+
+    I32Trunc_f32_u: lambda a: a,
+    I32Trunc_f32_s: lambda a: a,
+    I32Trunc_f64_u: lambda a: a,
+    I32Trunc_f64_s: lambda a: a,
+    I64Trunc_f32_u: lambda a: a,
+    I64Trunc_f32_s: lambda a: a,
+    I64Trunc_f64_u: lambda a: a,
+    I64Trunc_f64_s: lambda a: a,
+
+    F32Demote_f64: lambda a: a,
+    F64Promote_f32: lambda a: a,
+
+    F32Convert_i32_u: lambda a: a,
+    F32Convert_i32_s: lambda a: a,
+    F32Convert_i64_u: lambda a: a,
+    F32Convert_i64_s: lambda a: a,
+    F64Convert_i32_u: lambda a: a,
+    F64Convert_i32_s: lambda a: a,
+    F64Convert_i64_u: lambda a: a,
+    F64Convert_i64_s: lambda a: a,
+
+    I32Reinterpret_f32: lambda a: a,
+    I64Reinterpret_f64: lambda a: a,
+    F32Reinterpret_i32: lambda a: a,
+    F64Reinterpret_i64: lambda a: a,
+}
 
 
 
@@ -157,6 +217,10 @@ def interpret_wasm_section(code: List[InstructionBase], memory: WasmMemoryInstan
             operand_c1 = cast(int, stack.pop())
             relopfunc = RELOP_FUNC[f'{op.type}{op.op}']
             stack.append(clamp(op.type, op.bits, relopfunc(operand_c1, operand_c2, op.bits)))
+        elif isinstance(op, CvtInstructionBase):
+            operand_c1 = cast(int, stack.pop())
+            cvtopfunc = CVTOP_FUNC[type(op)]
+            stack.append(clamp(op.type, op.bits, cvtopfunc(operand_c1)))
 
 
     return stack[-1], stack
