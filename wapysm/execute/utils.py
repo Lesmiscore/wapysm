@@ -331,3 +331,14 @@ def wasm_ige_unsigned(a: int, b: int, bits: VALID_BITS) -> bool:
 
 def wasm_ige_signed(a: int, b: int, bits: VALID_BITS) -> bool:
     return unclamp_anybit(a, bits) >= unclamp_anybit(b, bits)
+
+
+def wasm_i64_to_i32(a: int) -> int:
+    return clamp_32bit(a)
+
+def wasm_i32_unsigned_to_i64(a: int) -> int:
+    return clamp_32bit(a)
+
+def wasm_i32_signed_to_i64(a: int) -> int:
+    # bits beyond 64bit is acceptable; it's get trimmed somewhere
+    return unclamp_32bit(a)

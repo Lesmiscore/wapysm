@@ -1,10 +1,11 @@
 from math import ceil, copysign, floor, trunc
 from typing import Callable, Dict, List, Optional, Tuple, Type, Union, cast
+import struct
 
 from ...execute.context import WasmMemoryInstance
 from ...execute.utils import (
-    WASM_VALUE, clamp, trap, wasm_fnearest,
-    wasm_fsqrt, wasm_iadd, wasm_iclz, wasm_ictz,
+    WASM_VALUE, clamp, clamp_32bit, clamp_64bit, trap, unclamp_32bit, unclamp_64bit, wasm_fnearest,
+    wasm_fsqrt, wasm_i32_signed_to_i64, wasm_i32_unsigned_to_i64, wasm_i64_to_i32, wasm_iadd, wasm_iclz, wasm_ictz,
     wasm_idiv_signed, wasm_idiv_unsigned, wasm_ieq, wasm_ieqz, wasm_ige_signed, wasm_ige_unsigned, wasm_igt_signed, wasm_igt_unsigned, wasm_ile_signed, wasm_ile_unsigned, wasm_ilt_signed, wasm_ilt_unsigned,
     wasm_imul, wasm_ine, wasm_ipopcnt, wasm_irem_signed,
     wasm_irotl, wasm_irotr, wasm_ishl,
@@ -142,37 +143,39 @@ RELOP_FUNC: Dict[
 }
 CVTOP_FUNC: Dict[
     Type[CvtInstructionBase],
-    Callable[[Union[int, float]], Union[int, float]]
+    # Callable[[Union[int, float]], Union[int, float]],
+    Callable[..., Union[int, float]],  # see above for expected types
 ] = {
-    I32Wrap_I64: lambda a: a,
-    I64Extend_i32_u: lambda a: a,
-    I64Extend_i32_s: lambda a: a,
+    # TO CVTOP FROM
+    I32Wrap_I64: wasm_i64_to_i32,  # i64 -> i32
+    I64Extend_i32_u: wasm_i32_unsigned_to_i64,
+    I64Extend_i32_s: wasm_i32_signed_to_i64,
 
-    I32Trunc_f32_u: lambda a: a,
-    I32Trunc_f32_s: lambda a: a,
-    I32Trunc_f64_u: lambda a: a,
-    I32Trunc_f64_s: lambda a: a,
-    I64Trunc_f32_u: lambda a: a,
-    I64Trunc_f32_s: lambda a: a,
-    I64Trunc_f64_u: lambda a: a,
-    I64Trunc_f64_s: lambda a: a,
+    I32Trunc_f32_u: int,
+    I32Trunc_f32_s: int,
+    I32Trunc_f64_u: int,
+    I32Trunc_f64_s: int,
+    I64Trunc_f32_u: int,
+    I64Trunc_f32_s: int,
+    I64Trunc_f64_u: int,
+    I64Trunc_f64_s: int,
 
-    F32Demote_f64: lambda a: a,
-    F64Promote_f32: lambda a: a,
+    F32Demote_f64: lambda a: struct.unpack('f<', struct.pack('f<', a))[0],
+    F64Promote_f32: lambda a: struct.unpack('d<', struct.pack('d<', a))[0],
 
-    F32Convert_i32_u: lambda a: a,
-    F32Convert_i32_s: lambda a: a,
-    F32Convert_i64_u: lambda a: a,
-    F32Convert_i64_s: lambda a: a,
-    F64Convert_i32_u: lambda a: a,
-    F64Convert_i32_s: lambda a: a,
-    F64Convert_i64_u: lambda a: a,
-    F64Convert_i64_s: lambda a: a,
+    F32Convert_i32_u: lambda a: float(clamp_32bit(a)),
+    F32Convert_i32_s: lambda a: float(unclamp_32bit(a)),
+    F32Convert_i64_u: lambda a: float(clamp_64bit(a)),
+    F32Convert_i64_s: lambda a: float(unclamp_64bit(a)),
+    F64Convert_i32_u: lambda a: float(clamp_32bit(a)),
+    F64Convert_i32_s: lambda a: float(unclamp_32bit(a)),
+    F64Convert_i64_u: lambda a: float(clamp_64bit(a)),
+    F64Convert_i64_s: lambda a: float(unclamp_64bit(a)),
 
-    I32Reinterpret_f32: lambda a: a,
-    I64Reinterpret_f64: lambda a: a,
-    F32Reinterpret_i32: lambda a: a,
-    F64Reinterpret_i64: lambda a: a,
+    I32Reinterpret_f32: lambda a: struct.unpack('I<', struct.pack('f<', a))[0],
+    I64Reinterpret_f64: lambda a: struct.unpack('L<', struct.pack('d<', a))[0],
+    F32Reinterpret_i32: lambda a: struct.unpack('f<', struct.pack('I<', a))[0],
+    F64Reinterpret_i64: lambda a: struct.unpack('d<', struct.pack('L<', a))[0],
 }
 
 
