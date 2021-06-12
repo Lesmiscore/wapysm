@@ -1,47 +1,44 @@
+import struct
 from math import ceil, copysign, floor, trunc
 from typing import Callable, Dict, List, Optional, Tuple, Type, Union, cast
-import struct
 
-from ...execute.context import WasmMemoryInstance
+from ...execute.context import WasmMemoryInstance, WasmModuleInstance, WasmStore
 from ...execute.utils import (
-    WASM_VALUE, clamp, clamp_32bit, clamp_64bit, trap, unclamp_32bit, unclamp_64bit, wasm_fnearest,
-    wasm_fsqrt, wasm_i32_signed_to_i64, wasm_i32_unsigned_to_i64, wasm_i64_to_i32, wasm_iadd, wasm_iclz, wasm_ictz,
-    wasm_idiv_signed, wasm_idiv_unsigned, wasm_ieq, wasm_ieqz, wasm_ige_signed, wasm_ige_unsigned, wasm_igt_signed, wasm_igt_unsigned, wasm_ile_signed, wasm_ile_unsigned, wasm_ilt_signed, wasm_ilt_unsigned,
-    wasm_imul, wasm_ine, wasm_ipopcnt, wasm_irem_signed,
+    WASM_VALUE, clamp, clamp_32bit, clamp_64bit,
+    trap, unclamp_32bit, unclamp_64bit,
+    wasm_fnearest, wasm_fsqrt,
+    wasm_i32_signed_to_i64, wasm_i32_unsigned_to_i64,
+    wasm_i64_to_i32, wasm_iadd, wasm_iclz, wasm_ictz,
+    wasm_idiv_signed, wasm_idiv_unsigned, wasm_ieq,
+    wasm_ieqz, wasm_ige_signed, wasm_ige_unsigned,
+    wasm_igt_signed, wasm_igt_unsigned,
+    wasm_ile_signed, wasm_ile_unsigned,
+    wasm_ilt_signed, wasm_ilt_unsigned, wasm_imul,
+    wasm_ine, wasm_ipopcnt, wasm_irem_signed,
     wasm_irotl, wasm_irotr, wasm_ishl,
     wasm_ishr_signed, wasm_ishr_unsigned, wasm_isub)
-from ...opcode import Block, InstructionBase, Nop, Unreachable
+from ...opcode import (
+    Block, DropInstruction, InstructionBase, Nop,
+    SelectInstruction, Unreachable)
 from ...opcode.numeric_generated import (
-    CvtInstructionBase,
-    F32Convert_i32_s,
-    F32Convert_i32_u,
-    F32Convert_i64_s,
-    F32Convert_i64_u,
-    F32Demote_f64,
-    F32Reinterpret_i32,
-    F64Convert_i32_s,
-    F64Convert_i32_u,
-    F64Convert_i64_s,
-    F64Convert_i64_u,
-    F64Promote_f32,
-    F64Reinterpret_i64,
-    I32Reinterpret_f32,
-    I32Trunc_f32_s,
-    I32Trunc_f32_u,
-    I32Trunc_f64_s,
-    I32Trunc_f64_u,
-    I32Wrap_I64,
-    I64Extend_i32_s,
-    I64Extend_i32_u,
-    I64Reinterpret_f64,
-    I64Trunc_f32_s,
-    I64Trunc_f32_u,
-    I64Trunc_f64_s,
-    I64Trunc_f64_u,
-    RelOperatorInstructionBase,
     VALID_BITS,
     BinaryOperatorInstructionBase,
     ConstantInstructionBase,
+    CvtInstructionBase, F32Convert_i32_s,
+    F32Convert_i32_u, F32Convert_i64_s,
+    F32Convert_i64_u, F32Demote_f64,
+    F32Reinterpret_i32, F64Convert_i32_s,
+    F64Convert_i32_u, F64Convert_i64_s,
+    F64Convert_i64_u, F64Promote_f32,
+    F64Reinterpret_i64,
+    I32Reinterpret_f32, I32Trunc_f32_s,
+    I32Trunc_f32_u, I32Trunc_f64_s,
+    I32Trunc_f64_u, I32Wrap_I64,
+    I64Extend_i32_s, I64Extend_i32_u,
+    I64Reinterpret_f64, I64Trunc_f32_s,
+    I64Trunc_f32_u, I64Trunc_f64_s,
+    I64Trunc_f64_u,
+    RelOperatorInstructionBase,
     TestOperatorInstructionBase,
     UnaryOperatorInstructionBase)
 from ...parser.structure import VALTYPE_TYPE
@@ -180,7 +177,14 @@ CVTOP_FUNC: Dict[
 
 
 
-def interpret_wasm_section(code: List[InstructionBase], memory: WasmMemoryInstance, label: Optional[int] = None, resulttype: List[VALTYPE_TYPE] = []) -> Tuple[WASM_VALUE, List[WASM_VALUE]]:
+def interpret_wasm_section(
+    code: List[InstructionBase],
+    memory: WasmMemoryInstance,
+    module: WasmModuleInstance,
+    store: WasmStore,
+    label: Optional[int] = None,
+    resulttype: List[VALTYPE_TYPE] = [],
+) -> Tuple[WASM_VALUE, List[WASM_VALUE]]:
     stack: List[WASM_VALUE] = []
     idx: int = 0
 
@@ -194,7 +198,7 @@ def interpret_wasm_section(code: List[InstructionBase], memory: WasmMemoryInstan
         elif isinstance(op, Unreachable):
             trap(op)
         elif isinstance(op, Block):
-            stack.append(interpret_wasm_section(op.instr, memory, 0, op.resultype)[0])
+            stack.append(interpret_wasm_section(op.instr, memory, module, store, 0, op.resultype)[0])
         # TODO: not yet completed
 
         # Constant Instruction
@@ -203,27 +207,38 @@ def interpret_wasm_section(code: List[InstructionBase], memory: WasmMemoryInstan
 
         # 4.4.1. Numeric Instructions
         elif isinstance(op, UnaryOperatorInstructionBase):
-            operand_c1: int = cast(int, stack.pop())
+            operand_c1: WASM_VALUE = stack.pop()
             unopfunc = UNOP_FUNC[f'{op.type}{op.op}']
-            stack.append(clamp(op.type, op.bits, unopfunc(operand_c1, op.bits)))
+            stack.append(clamp(op.type, op.bits, unopfunc(cast(int, operand_c1[2]), op.bits)))
         elif isinstance(op, BinaryOperatorInstructionBase):
-            operand_c2: int = cast(int, stack.pop())
-            operand_c1 = cast(int, stack.pop())
+            operand_c2: WASM_VALUE = stack.pop()
+            operand_c1 = stack.pop()
             biopfunc = BIOP_FUNC[f'{op.type}{op.op}']
-            stack.append(clamp(op.type, op.bits, biopfunc(operand_c1, operand_c2, op.bits)))
+            stack.append(clamp(op.type, op.bits, biopfunc(operand_c1[2], operand_c2[2], op.bits)))
         elif isinstance(op, TestOperatorInstructionBase):
-            operand_c1 = cast(int, stack.pop())
+            operand_c1 = stack.pop()
             testopfunc = TESTOP_FUNC[f'{op.type}{op.op}']
-            stack.append(clamp(op.type, op.bits, testopfunc(operand_c1, op.bits)))
+            stack.append(clamp(op.type, op.bits, testopfunc(operand_c1[2], op.bits)))
         elif isinstance(op, RelOperatorInstructionBase):
-            operand_c2 = cast(int, stack.pop())
-            operand_c1 = cast(int, stack.pop())
+            operand_c2 = stack.pop()
+            operand_c1 = stack.pop()
             relopfunc = RELOP_FUNC[f'{op.type}{op.op}']
-            stack.append(clamp(op.type, op.bits, relopfunc(operand_c1, operand_c2, op.bits)))
+            stack.append(clamp(op.type, op.bits, relopfunc(operand_c1[2], operand_c2[2], op.bits)))
         elif isinstance(op, CvtInstructionBase):
-            operand_c1 = cast(int, stack.pop())
+            operand_c1 = stack.pop()
             cvtopfunc = CVTOP_FUNC[type(op)]
-            stack.append(clamp(op.type, op.bits, cvtopfunc(operand_c1)))
+            stack.append(clamp(op.type, op.bits, cvtopfunc(operand_c1[2])))
 
+        # 4.4.2. Parametric Instructions
+        elif isinstance(op, DropInstruction):
+            stack.pop()
+        elif isinstance(op, SelectInstruction):
+            operand_c1 = stack.pop()
+            operand_val2 = stack.pop()
+            operand_val1 = stack.pop()
+            if operand_c1[2] != 0:
+                stack.append(operand_val1)
+            else:
+                stack.append(operand_val2)
 
     return stack[-1], stack

@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Literal
+from typing import Any, Callable, Dict, List, Literal
 from ..opcode.numeric_generated import ConstantInstructionBase
 from ..opcode import InstructionBase
 from ..parser.structure import WasmFunctionType
@@ -44,16 +44,16 @@ class WasmExportInstance():
 
 class WasmStore():
     " 4.2.3 Store "
-    funcs: WasmFunctionInstance
-    tables: WasmTableInstance
-    mems: WasmMemoryInstance
-    globals_: WasmGlobalInstance
+    funcs: Dict[int, WasmFunctionInstance]
+    tables: Dict[int, WasmTableInstance]
+    mems: Dict[int, WasmMemoryInstance]
+    globals_: Dict[int, WasmGlobalInstance]
 
 class WasmModuleInstance():
     " 4.2.5 Module Instances "
-    types: WasmFunctionType
-    funcaddrs: int
-    tableaddrs: int
-    memaddrs: int
-    globaladdrs: int
-    exports: WasmExportInstance
+    types: Dict[int, WasmFunctionType]
+    funcaddrs: Dict[int, int]
+    tableaddrs: Dict[int, int]
+    memaddrs: Dict[int, int]
+    globaladdrs: Dict[int, int]
+    exports: Dict[int, WasmExportInstance]
