@@ -1,6 +1,6 @@
 import struct
 from math import ceil, copysign, floor, trunc
-from typing import Callable, Dict, List, Tuple, Type, Union, cast
+from typing import Callable, Dict, List, Optional, Tuple, Type, Union, cast
 
 from ...execute.context import WasmMemoryInstance, WasmModuleInstance, WasmStore
 from ...execute.utils import (
@@ -18,7 +18,7 @@ from ...execute.utils import (
     wasm_irotl, wasm_irotr, wasm_ishl,
     wasm_ishr_signed, wasm_ishr_unsigned, wasm_isub)
 from ...opcode import (
-    Block, DropInstruction, IfElse, InstructionBase, Loop, Nop,
+    Block, BlockInstructionBase, DropInstruction, IfElse, InstructionBase, Loop, Nop,
     SelectInstruction, Unreachable)
 from ...opcode.numeric_generated import (
     VALID_BITS,
@@ -175,6 +175,14 @@ CVTOP_FUNC: Dict[
     F64Reinterpret_i64: lambda a: struct.unpack('d<', struct.pack('L<', a))[0],
 }
 
+WASM_LABEL_CONTINUATION = Tuple[
+    Optional[BlockInstructionBase],  # instruction that triggered label block
+    int,  # label
+    List[InstructionBase],  # opcodes
+    int,  # index of instruction we were running on
+    List[WASM_VALUE],  # content of value stack at that time
+    bool,  # is_loop
+]
 
 
 def interpret_wasm_section(
@@ -182,15 +190,17 @@ def interpret_wasm_section(
     memory: WasmMemoryInstance,
     module: WasmModuleInstance,
     store: WasmStore,
-    labels: List[int] = None,
     resulttype: List[VALTYPE_TYPE] = [],
-    is_loop: bool = False,
 ) -> Tuple[WASM_VALUE, List[WASM_VALUE]]:
     stack: List[WASM_VALUE] = []
+    current_block: Optional[BlockInstructionBase] = None
+    current_label = 0
+    label_stack: List[WASM_LABEL_CONTINUATION] = []
+    # activation_stack: list = []
+    is_loop: bool = False
     idx: int = 0
-    if not labels:
-        labels = []
 
+    # don't store len(code)
     while idx < len(code) or is_loop:
         op = code[idx]
         idx += 1
@@ -203,16 +213,59 @@ def interpret_wasm_section(
         elif isinstance(op, Unreachable):
             trap(op)
         elif isinstance(op, Block):
-            stack.append(interpret_wasm_section(op.instr, memory, module, store, [0], op.resultype)[0])
+            # save continuation
+            cont: WASM_LABEL_CONTINUATION = (
+                current_block, current_label, list(code), idx, list(stack), is_loop,
+            )
+            label_stack.append(cont)
+            # reset "registers"
+            current_block = op
+            current_label = 0
+            code = op.instr
+            idx = 0
+            stack = []
+            is_loop = False
+            # see you at the next continuation!
+            continue
         elif isinstance(op, Loop):
-            stack.append(interpret_wasm_section(op.instr, memory, module, store, [0], op.resultype, True)[0])
+            # save continuation
+            cont = (
+                current_block, current_label, list(code), idx, list(stack), is_loop,
+            )
+            label_stack.append(cont)
+            # reset "registers"
+            current_block = op
+            current_label = 0
+            code = op.instr
+            idx = 0
+            stack = []
+            is_loop = True  # we're in Loop instruction!
+            # see you at the next continuation!
+            continue
         elif isinstance(op, IfElse):
+            # save continuation
+            cont = (
+                current_block, current_label, list(code), idx, list(stack), is_loop,
+            )
+            label_stack.append(cont)
+
             operand_c1: WASM_VALUE = stack.pop()
+
+            # partially reset "registers"
+            current_block = op
+            current_label = 0
+            # code = op.instr
+            idx = 0
+            stack = []
+            is_loop = False
+
             if operand_c1 != 0:
                 # op.instr is "then" block, so that's OK
-                stack.append(interpret_wasm_section(op.instr, memory, module, store, [0], op.resultype)[0])
+                code = op.instr
             else:
-                stack.append(interpret_wasm_section(op.else_block, memory, module, store, [0], op.resultype)[0])
+                code = op.else_block
+            # jump!
+            continue
 
         # Constant Instruction
         elif isinstance(op, ConstantInstructionBase):
