@@ -1,6 +1,6 @@
 import struct
 from math import ceil, copysign, floor, trunc
-from typing import Callable, Dict, List, Optional, Tuple, Type, Union, cast
+from typing import Callable, Dict, List, Tuple, Type, Union, cast
 
 from ...execute.context import WasmMemoryInstance, WasmModuleInstance, WasmStore
 from ...execute.utils import (
@@ -18,7 +18,7 @@ from ...execute.utils import (
     wasm_irotl, wasm_irotr, wasm_ishl,
     wasm_ishr_signed, wasm_ishr_unsigned, wasm_isub)
 from ...opcode import (
-    Block, DropInstruction, InstructionBase, Nop,
+    Block, DropInstruction, IfElse, InstructionBase, Loop, Nop,
     SelectInstruction, Unreachable)
 from ...opcode.numeric_generated import (
     VALID_BITS,
@@ -182,15 +182,20 @@ def interpret_wasm_section(
     memory: WasmMemoryInstance,
     module: WasmModuleInstance,
     store: WasmStore,
-    label: Optional[int] = None,
+    labels: List[int] = None,
     resulttype: List[VALTYPE_TYPE] = [],
+    is_loop: bool = False,
 ) -> Tuple[WASM_VALUE, List[WASM_VALUE]]:
     stack: List[WASM_VALUE] = []
     idx: int = 0
+    if not labels:
+        labels = []
 
-    while idx < len(code):
+    while idx < len(code) or is_loop:
         op = code[idx]
         idx += 1
+        if is_loop:
+            idx %= len(code)
 
         # Control Instructions
         if isinstance(op, Nop):
@@ -198,8 +203,16 @@ def interpret_wasm_section(
         elif isinstance(op, Unreachable):
             trap(op)
         elif isinstance(op, Block):
-            stack.append(interpret_wasm_section(op.instr, memory, module, store, 0, op.resultype)[0])
-        # TODO: not yet completed
+            stack.append(interpret_wasm_section(op.instr, memory, module, store, [0], op.resultype)[0])
+        elif isinstance(op, Loop):
+            stack.append(interpret_wasm_section(op.instr, memory, module, store, [0], op.resultype, True)[0])
+        elif isinstance(op, IfElse):
+            operand_c1: WASM_VALUE = stack.pop()
+            if operand_c1 != 0:
+                # op.instr is "then" block, so that's OK
+                stack.append(interpret_wasm_section(op.instr, memory, module, store, [0], op.resultype)[0])
+            else:
+                stack.append(interpret_wasm_section(op.else_block, memory, module, store, [0], op.resultype)[0])
 
         # Constant Instruction
         elif isinstance(op, ConstantInstructionBase):
@@ -207,7 +220,7 @@ def interpret_wasm_section(
 
         # 4.4.1. Numeric Instructions
         elif isinstance(op, UnaryOperatorInstructionBase):
-            operand_c1: WASM_VALUE = stack.pop()
+            operand_c1 = stack.pop()
             unopfunc = UNOP_FUNC[f'{op.type}{op.op}']
             stack.append(clamp(op.type, op.bits, unopfunc(cast(int, operand_c1[2]), op.bits)))
         elif isinstance(op, BinaryOperatorInstructionBase):
