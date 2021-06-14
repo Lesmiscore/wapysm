@@ -18,7 +18,7 @@ from ...execute.utils import (
     wasm_irotl, wasm_irotr, wasm_ishl,
     wasm_ishr_signed, wasm_ishr_unsigned, wasm_isub)
 from ...opcode import (
-    Block, BlockInstructionBase, DropInstruction, IfElse, InstructionBase, Loop, Nop,
+    Block, BlockInstructionBase, Br, DropInstruction, IfElse, InstructionBase, Loop, Nop,
     SelectInstruction, Unreachable)
 from ...opcode.numeric_generated import (
     VALID_BITS,
@@ -182,6 +182,7 @@ WASM_LABEL_CONTINUATION = Tuple[
     int,  # index of instruction we were running on
     List[WASM_VALUE],  # content of value stack at that time
     bool,  # is_loop
+    List[VALTYPE_TYPE],  # result type
 ]
 
 
@@ -215,7 +216,7 @@ def interpret_wasm_section(
         elif isinstance(op, Block):
             # save continuation
             cont: WASM_LABEL_CONTINUATION = (
-                current_block, current_label, list(code), idx, list(stack), is_loop,
+                current_block, current_label, list(code), idx, list(stack), is_loop, resulttype,
             )
             label_stack.append(cont)
             # reset "registers"
@@ -225,12 +226,13 @@ def interpret_wasm_section(
             idx = 0
             stack = []
             is_loop = False
+            resulttype = op.resultype
             # see you at the next continuation!
             continue
         elif isinstance(op, Loop):
             # save continuation
             cont = (
-                current_block, current_label, list(code), idx, list(stack), is_loop,
+                current_block, current_label, list(code), idx, list(stack), is_loop, resulttype,
             )
             label_stack.append(cont)
             # reset "registers"
@@ -240,12 +242,13 @@ def interpret_wasm_section(
             idx = 0
             stack = []
             is_loop = True  # we're in Loop instruction!
-            # see you at the next continuation!
+            resulttype = op.resultype
+            # go!
             continue
         elif isinstance(op, IfElse):
             # save continuation
             cont = (
-                current_block, current_label, list(code), idx, list(stack), is_loop,
+                current_block, current_label, list(code), idx, list(stack), is_loop, resulttype,
             )
             label_stack.append(cont)
 
@@ -258,12 +261,28 @@ def interpret_wasm_section(
             idx = 0
             stack = []
             is_loop = False
+            resulttype = op.resultype
 
             if operand_c1 != 0:
                 # op.instr is "then" block, so that's OK
                 code = op.instr
             else:
                 code = op.else_block
+            # jump!
+            continue
+        elif isinstance(op, Br):
+            # find specified label
+            lbl = op.labelidx
+            oldstack = list(stack)
+            while label_stack:
+                cont = label_stack.pop()
+                if cont[1] == lbl:
+                    break
+            else:
+                trap(f'Can\'t find label ${lbl}')
+            # set "registers"
+            current_block, current_label, code, idx, stack, is_loop, resulttype = cont
+            stack = list(stack) + oldstack
             # jump!
             continue
 
