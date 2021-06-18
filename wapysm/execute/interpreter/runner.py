@@ -18,7 +18,7 @@ from ...execute.utils import (
     wasm_irotl, wasm_irotr, wasm_ishl,
     wasm_ishr_signed, wasm_ishr_unsigned, wasm_isub)
 from ...opcode import (
-    Block, BlockInstructionBase, Br, DropInstruction, IfElse, InstructionBase, Loop, Nop,
+    Block, BlockInstructionBase, Br, BrIf, BrTable, DropInstruction, IfElse, InstructionBase, Loop, Nop,
     SelectInstruction, Unreachable)
 from ...opcode.numeric_generated import (
     VALID_BITS,
@@ -263,7 +263,7 @@ def interpret_wasm_section(
             is_loop = False
             resulttype = op.resultype
 
-            if operand_c1 != 0:
+            if operand_c1[2] != 0:
                 # op.instr is "then" block, so that's OK
                 code = op.instr
             else:
@@ -271,6 +271,40 @@ def interpret_wasm_section(
             # jump!
             continue
         elif isinstance(op, Br):
+            # find specified label
+            lbl = op.labelidx
+            oldstack = list(stack)
+            while label_stack:
+                cont = label_stack.pop()
+                if cont[1] == lbl:
+                    break
+            else:
+                trap(f'Can\'t find label ${lbl}')
+            # set "registers"
+            current_block, current_label, code, idx, stack, is_loop, resulttype = cont
+            stack = list(stack) + oldstack
+            # jump!
+            continue
+        elif isinstance(op, BrIf):
+            operand_c1: WASM_VALUE = stack.pop()
+
+            if operand_c1[2] != 0:
+                # find specified label
+                lbl = op.labelidx
+                oldstack = list(stack)
+                while label_stack:
+                    cont = label_stack.pop()
+                    if cont[1] == lbl:
+                        break
+                else:
+                    trap(f'Can\'t find label ${lbl}')
+                # set "registers"
+                current_block, current_label, code, idx, stack, is_loop, resulttype = cont
+                stack = list(stack) + oldstack
+                # jump!
+                continue
+        elif isinstance(op, BrTable):
+            operand_c1: WASM_VALUE = stack.pop()
             # find specified label
             lbl = op.labelidx
             oldstack = list(stack)
