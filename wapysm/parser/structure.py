@@ -27,6 +27,11 @@ class WasmFunctionType():
         self.argument_types = argument_types
         self.return_types = return_types
 
+    def __eq__(self, o: object) -> bool:
+        if not isinstance(o, WasmFunctionType):
+            return False
+        return self.return_types == o.return_types and self.argument_types == o.argument_types
+
 class WasmLimits():
     minimum: int = 0
     maximum: Optional[int] = None

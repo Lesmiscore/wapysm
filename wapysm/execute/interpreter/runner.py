@@ -1,8 +1,9 @@
 import struct
 from math import ceil, copysign, floor, trunc
 from typing import Callable, Dict, List, Optional, Tuple, Type, Union, cast
+from wapysm.parser.module import WasmModule
 
-from ...execute.context import WasmMemoryInstance, WasmModuleInstance, WasmStore
+from ...execute.context import WasmHostFunctionInstance, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
 from ...execute.utils import (
     WASM_VALUE, clamp, clamp_32bit, clamp_64bit,
     trap, unclamp_32bit, unclamp_64bit,
@@ -18,7 +19,7 @@ from ...execute.utils import (
     wasm_irotl, wasm_irotr, wasm_ishl,
     wasm_ishr_signed, wasm_ishr_unsigned, wasm_isub)
 from ...opcode import (
-    Block, BlockInstructionBase, Br, BrIf, BrTable, DropInstruction, IfElse, InstructionBase, Loop, Nop,
+    Block, BlockInstructionBase, Br, BrIf, BrTable, Call, CallIndirect, DropInstruction, IfElse, InstructionBase, Loop, Nop, Return,
     SelectInstruction, Unreachable)
 from ...opcode.numeric_generated import (
     VALID_BITS,
@@ -189,10 +190,10 @@ WASM_LABEL_CONTINUATION = Tuple[
 def interpret_wasm_section(
     code: List[InstructionBase],
     memory: WasmMemoryInstance,
-    module: WasmModuleInstance,
+    module: WasmModule,
     store: WasmStore,
     resulttype: List[VALTYPE_TYPE] = [],
-) -> Tuple[WASM_VALUE, List[WASM_VALUE]]:
+) -> Tuple[Optional[WASM_VALUE], List[WASM_VALUE]]:
     stack: List[WASM_VALUE] = []
     current_block: Optional[BlockInstructionBase] = None
     current_label = 0
@@ -286,7 +287,7 @@ def interpret_wasm_section(
             # jump!
             continue
         elif isinstance(op, BrIf):
-            operand_c1: WASM_VALUE = stack.pop()
+            operand_c1 = stack.pop()
 
             if operand_c1[2] != 0:
                 # find specified label
@@ -304,9 +305,12 @@ def interpret_wasm_section(
                 # jump!
                 continue
         elif isinstance(op, BrTable):
-            operand_c1: WASM_VALUE = stack.pop()
+            operand_c1 = stack.pop()
+            if operand_c1[2] < len(op.labelindices):
+                lbl = op.labelindices[int(operand_c1[2])]
+            else:
+                lbl = op.lastlabel
             # find specified label
-            lbl = op.labelidx
             oldstack = list(stack)
             while label_stack:
                 cont = label_stack.pop()
@@ -319,6 +323,33 @@ def interpret_wasm_section(
             stack = list(stack) + oldstack
             # jump!
             continue
+        elif isinstance(op, Return):
+            # is this correct?
+            break
+        elif isinstance(op, Call):
+            func = module.funcs[op.callidx]
+            interpret_wasm_section(func.body, memory, module, store, [])
+        elif isinstance(op, CallIndirect):
+            ta = module.tables[0].tableaddr
+            tab = store.tables[ta]
+            ft_expect = module.types[op.typeidx]
+            operand_i = stack.pop()
+            if len(tab.funcaddrs) < operand_i[2]:
+                trap('funcaddrs out of range')
+            a = tab.funcaddrs[len(tab.funcaddrs)]
+            f = store.funcs[a]
+            ft_actual = f.functype
+
+            if ft_expect != ft_actual:
+                trap('type signature mismatch')
+
+            if isinstance(f, WasmLocalFunctionInstance):
+                interpret_wasm_section(f.code, memory, f.module, store, [])
+            elif isinstance(f, WasmHostFunctionInstance):
+                # I forgot what should I pass here
+                f.hostfunc(0)
+            else:
+                trap(f'unknown function: {repr(f)}')
 
         # Constant Instruction
         elif isinstance(op, ConstantInstructionBase):
@@ -360,4 +391,7 @@ def interpret_wasm_section(
             else:
                 stack.append(operand_val2)
 
-    return stack[-1], stack
+    if resulttype:
+        return stack[-1], stack
+    else:
+        return None, stack

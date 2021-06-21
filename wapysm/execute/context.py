@@ -1,4 +1,5 @@
-from typing import Any, Callable, Dict, List, Literal
+from typing import Callable, Dict, List, Literal
+from wapysm.parser.module import WasmMemory, WasmModule
 from ..opcode.numeric_generated import ConstantInstructionBase
 from ..opcode import InstructionBase
 from ..parser.structure import WasmFunctionType
@@ -9,11 +10,11 @@ class WasmFunctionInstance():
     functype: WasmFunctionType
 
 class WasmLocalFunctionInstance(WasmFunctionInstance):
-    module: Any  # WasmModuleInstance
+    module: WasmModule
     code: List[InstructionBase]
 
 class WasmHostFunctionInstance(WasmFunctionInstance):
-    hostfunc: Callable[[int], int]
+    hostfunc: Callable[[int], int]  # TODO: make it better
 
 
 class WasmTableInstance():
@@ -24,7 +25,7 @@ class WasmTableInstance():
 
 WASM_PAGE_SIZE = 65536
 
-class WasmMemoryInstance():
+class WasmMemoryInstance(WasmMemory):
     " 4.2.8 Memory Instances "
     data: bytearray
     maximum: int
@@ -49,11 +50,11 @@ class WasmStore():
     mems: Dict[int, WasmMemoryInstance]
     globals_: Dict[int, WasmGlobalInstance]
 
-class WasmModuleInstance():
-    " 4.2.5 Module Instances "
-    types: Dict[int, WasmFunctionType]
-    funcaddrs: Dict[int, int]
-    tableaddrs: Dict[int, int]
-    memaddrs: Dict[int, int]
-    globaladdrs: Dict[int, int]
-    exports: Dict[int, WasmExportInstance]
+# class WasmModuleInstance():
+#     " 4.2.5 Module Instances "
+#     types: Dict[int, WasmFunctionType]
+#     funcaddrs: Dict[int, int]
+#     tableaddrs: Dict[int, int]
+#     memaddrs: Dict[int, int]
+#     globaladdrs: Dict[int, int]
+#     exports: Dict[int, WasmExportInstance]

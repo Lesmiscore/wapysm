@@ -1,6 +1,6 @@
 # Section 2.5 Modules
 
-from typing import List, Literal, Optional, Tuple, Union
+from typing import Dict, List, Literal, Optional, Tuple, Union
 from ..opcode import InstructionBase
 from .structure import VALTYPE_TYPE, WasmFunctionType, WasmGlobalType, WasmLimits, WasmTableType
 
@@ -27,6 +27,9 @@ class WasmFunction():
 
 class WasmTable(WasmTableType):
     "2.5.4 Tables"
+
+    tableaddr: int
+
     def __init__(self, elemtype: int, lim: WasmLimits) -> None:
         super().__init__(elemtype, lim)
 
@@ -129,13 +132,13 @@ class WasmParsedModule():
 
 class WasmModule():
     # These types are temporary and subject to change
-    types: List[WasmType]
-    funcs: List[WasmFunction]
-    tables: List[WasmTable]
-    mems: List[WasmMemory]
-    globals: List[WasmGlobal]
-    elem: List[WasmElem]
-    data: List[WasmData]
+    types: Dict[int, WasmType]
+    funcs: Dict[int, WasmFunction]
+    tables: Dict[int, WasmTable]
+    mems: Dict[int, WasmMemory]
+    globals: Dict[int, WasmGlobal]
+    elem: Dict[int, WasmElem]
+    data: Dict[int, WasmData]
     start: Optional[WasmFunction]
-    imports: List[WasmImport]
-    exports: List[WasmExport]
+    imports: Dict[int, WasmImport]
+    exports: Dict[int, WasmExport]
