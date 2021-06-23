@@ -72,23 +72,6 @@ def unclamp_anybit(value: int, bits: VALID_BITS):
         return unclamp_64bit(value)
 
 
-def count_lead_and_trail_zeroes(d):
-    # https://graphics.stanford.edu/~seander/bithacks.html#ZerosOnRightLinear
-    if d:
-        v = (d ^ (d - 1) >> 1)  # Set v's trailing 0s to 1s and zero rest
-        trailing = 0
-        while v:
-            v >>= 1
-            trailing += 1
-
-        leading = 64
-        v = d
-        while v:
-            v >>= 1
-            leading -= 1
-        return leading, trailing
-    return 64, 64
-
 def wasm_fnearest(value: float, bits: VALID_BITS) -> float:
     " 4.3.3.16 fnearest "
     # value is zero, infinity or NaN
