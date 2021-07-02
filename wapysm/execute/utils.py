@@ -2,7 +2,7 @@
 
 from math import copysign, floor, isinf, isnan, sqrt, trunc
 from typing import Tuple, Union
-from wapysm.opcode.numeric_generated import INT_OR_FLOAT, VALID_BITS
+from ..opcode.numeric_generated import INT_OR_FLOAT, VALID_BITS
 from ..opcode import InstructionBase
 import struct
 

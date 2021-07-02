@@ -203,11 +203,21 @@ def interpret_wasm_section(
     idx: int = 0
 
     # don't store len(code)
-    while idx < len(code) or is_loop:
+    while idx <= len(code) or is_loop:
         op = code[idx]
         idx += 1
         if is_loop:
             idx %= len(code)
+        elif idx == len(code):
+            if label_stack:
+                # exit label
+                # set "registers"
+                current_block, current_label, code, idx, stack, is_loop, resulttype = label_stack.pop()
+                # jump!
+                continue
+            else:
+                # went out of code bounds, but no label to back
+                break
 
         # Control Instructions
         if isinstance(op, Nop):
@@ -347,7 +357,7 @@ def interpret_wasm_section(
                 interpret_wasm_section(f.code, memory, f.module, store, [])
             elif isinstance(f, WasmHostFunctionInstance):
                 # I forgot what should I pass here
-                f.hostfunc(0)
+                f.hostfunc(0)  # type: ignore
             else:
                 trap(f'unknown function: {repr(f)}')
 
