@@ -27,7 +27,7 @@ WASM_PAGE_SIZE = 65536
 
 class WasmMemoryInstance(WasmMemory):
     " 4.2.8 Memory Instances "
-    data: bytearray
+    segments: List[bytearray]
     maximum: int
 
 

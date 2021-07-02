@@ -1,9 +1,12 @@
 import struct
 from math import ceil, copysign, floor, trunc
 from typing import Callable, Dict, List, Optional, Tuple, Type, Union, cast
-from wapysm.parser.module import WasmModule
 
-from ...execute.context import WasmHostFunctionInstance, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
+from ...execute.context import (
+    WASM_PAGE_SIZE,
+    WasmHostFunctionInstance,
+    WasmLocalFunctionInstance, WasmMemoryInstance,
+    WasmStore)
 from ...execute.utils import (
     WASM_VALUE, clamp, clamp_32bit, clamp_64bit,
     trap, unclamp_32bit, unclamp_64bit,
@@ -19,8 +22,16 @@ from ...execute.utils import (
     wasm_irotl, wasm_irotr, wasm_ishl,
     wasm_ishr_signed, wasm_ishr_unsigned, wasm_isub)
 from ...opcode import (
-    Block, BlockInstructionBase, Br, BrIf, BrTable, Call, CallIndirect, DropInstruction, IfElse, InstructionBase, Loop, Nop, Return,
+    Block, BlockInstructionBase, Br, BrIf, BrTable, Call,
+    CallIndirect, DropInstruction, GlobalGetInstruction,
+    GlobalSetInstruction, IfElse, InstructionBase,
+    LocalGetInstruction, LocalSetInstruction,
+    LocalTeeInstruction, Loop, Nop, Return,
     SelectInstruction, Unreachable)
+from ...opcode.memory_generated import (
+    MemoryGrow,
+    MemoryLoadStoreInstructionBase,
+    MemorySize)
 from ...opcode.numeric_generated import (
     VALID_BITS,
     BinaryOperatorInstructionBase,
@@ -42,6 +53,7 @@ from ...opcode.numeric_generated import (
     RelOperatorInstructionBase,
     TestOperatorInstructionBase,
     UnaryOperatorInstructionBase)
+from ...parser.module import WasmModule
 from ...parser.structure import VALTYPE_TYPE
 
 UNOP_FUNC: Dict[
@@ -400,6 +412,42 @@ def interpret_wasm_section(
                 stack.append(operand_val1)
             else:
                 stack.append(operand_val2)
+
+        # 4.4.3. Variable Instructions
+        elif isinstance(op, LocalGetInstruction):
+            pass
+        elif isinstance(op, LocalSetInstruction):
+            pass
+        elif isinstance(op, LocalTeeInstruction):
+            pass
+        elif isinstance(op, GlobalGetInstruction):
+            pass
+        elif isinstance(op, GlobalSetInstruction):
+            pass
+
+        # 4.4.4. Memory Instructions
+        elif isinstance(op, MemorySize):
+            mem = store.mems[module.memaddrs[0]]
+            sz = len(mem.segments)
+            stack.append(('i', 32, sz))
+        elif isinstance(op, MemoryGrow):
+            mem = store.mems[module.memaddrs[0]]
+            operand_c1 = stack.pop()
+            array = []
+            try:
+                sz = len(mem.segments)
+                for _ in range(floor(operand_c1[2])):
+                    array.append(bytearray(WASM_PAGE_SIZE))
+                mem.segments.extend(array)
+                retval = sz
+            except BaseException:
+                array.clear()
+                retval = -1
+            stack.append(('i', 32, retval))
+        elif isinstance(op, MemoryLoadStoreInstructionBase) and op.op.startswith('load'):
+            pass
+        elif isinstance(op, MemoryLoadStoreInstructionBase) and op.op.startswith('store'):
+            pass
 
     if resulttype:
         return stack[-1], stack
