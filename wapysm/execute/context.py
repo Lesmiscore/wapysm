@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Literal
+from typing import Callable, Dict, List, Literal, Optional
 from wapysm.parser.module import WasmMemory, WasmModule
 from ..opcode.numeric_generated import ConstantInstructionBase
 from ..opcode import InstructionBase
@@ -27,8 +27,8 @@ WASM_PAGE_SIZE = 65536
 
 class WasmMemoryInstance(WasmMemory):
     " 4.2.8 Memory Instances "
-    segments: List[bytearray]
-    maximum: int
+    pages: List[bytearray]
+    maximum: Optional[int]
 
 
 class WasmGlobalInstance():

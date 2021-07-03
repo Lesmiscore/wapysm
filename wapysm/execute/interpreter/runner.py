@@ -428,17 +428,20 @@ def interpret_wasm_section(
         # 4.4.4. Memory Instructions
         elif isinstance(op, MemorySize):
             mem = store.mems[module.memaddrs[0]]
-            sz = len(mem.segments)
+            sz = len(mem.pages)
             stack.append(('i', 32, sz))
         elif isinstance(op, MemoryGrow):
             mem = store.mems[module.memaddrs[0]]
             operand_c1 = stack.pop()
+            length_to_extend = floor(operand_c1[2])
             array = []
             try:
-                sz = len(mem.segments)
-                for _ in range(floor(operand_c1[2])):
+                sz = len(mem.pages)
+                if mem.maximum and (sz + length_to_extend) > mem.maximum:
+                    raise Exception(f'Memory cannot grow past {mem.maximum} pages')
+                for _ in range(length_to_extend):
                     array.append(bytearray(WASM_PAGE_SIZE))
-                mem.segments.extend(array)
+                mem.pages.extend(array)
                 retval = sz
             except BaseException:
                 array.clear()
