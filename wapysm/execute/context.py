@@ -30,6 +30,23 @@ class WasmMemoryInstance(WasmMemory):
     pages: List[bytearray]
     maximum: Optional[int]
 
+    def __len__(self):
+        return len(self.pages) * WASM_PAGE_SIZE
+
+    def trim(self, begin: int, length: int) -> bytearray:
+        begin_index, begin_offset = divmod(begin, WASM_PAGE_SIZE)
+        end_index, end_offset = divmod(begin + length, WASM_PAGE_SIZE)
+        if end_offset == 0:
+            end_offset = WASM_PAGE_SIZE
+            end_index = end_index - 1
+
+        if begin_index == end_index:
+            # not spans page
+            return self.pages[begin_index][begin_offset:end_offset]
+        else:
+            # spans page
+            return self.pages[begin_index][begin_offset:WASM_PAGE_SIZE] + self.pages[end_index][0:end_offset]
+
 
 class WasmGlobalInstance():
     " 4.2.9 Global Instances "
