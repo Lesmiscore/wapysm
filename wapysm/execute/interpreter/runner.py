@@ -491,7 +491,43 @@ def interpret_wasm_section(
             c: WASM_VALUE = (op.type, op.bits, value)
             stack.append(c)
         elif isinstance(op, MemoryLoadStoreInstructionBase) and op.op.startswith('store'):
-            pass
+            a = module.memaddrs[0]
+            mem = store.mems[a]
+            operand_c_value = stack.pop()[2]
+            operand_i_value = stack.pop()[2]
+
+            ea = int(operand_i_value + op.offset)
+
+            if op.op == 'store':
+                # N is not part of inst.
+                N = op.bits
+            else:
+                # N is part of inst.
+                N = int(op.op[5:])
+
+            if ea + N // 8 > len(mem):
+                trap('end of store position is beyond memory size')
+
+            if op.op == 'store':
+                if op.type == 'i':
+                    if op.bits == 32:
+                        pack_arg = '<I'
+                    else:
+                        pack_arg = '<L'
+                else:
+                    if op.bits == 32:
+                        pack_arg = '<f'
+                    else:
+                        pack_arg = '<d'
+            else:
+                # if N is part of the inst.
+                if N == 32:
+                    pack_arg = '<I'
+                else:
+                    pack_arg = '<L'
+            b_star_ = struct.pack(pack_arg, operand_c_value)
+            for i, bb in enumerate(b_star_):
+                mem[ea + i] = bb
 
     if resulttype:
         return stack[-1], stack

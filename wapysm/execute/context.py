@@ -33,6 +33,14 @@ class WasmMemoryInstance(WasmMemory):
     def __len__(self):
         return len(self.pages) * WASM_PAGE_SIZE
 
+    def __getitem__(self, key: int) -> int:
+        begin_index, begin_offset = divmod(key, WASM_PAGE_SIZE)
+        return self.pages[begin_index][begin_offset]
+
+    def __setitem__(self, key: int, value: int):
+        begin_index, begin_offset = divmod(key, WASM_PAGE_SIZE)
+        self.pages[begin_index][begin_offset] = value
+
     def trim(self, begin: int, length: int) -> bytearray:
         begin_index, begin_offset = divmod(begin, WASM_PAGE_SIZE)
         end_index, end_offset = divmod(begin + length, WASM_PAGE_SIZE)
