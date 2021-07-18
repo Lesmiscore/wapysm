@@ -4,6 +4,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Type, Union, cast
 
 from ...execute.context import (
     WASM_PAGE_SIZE,
+    WasmGlobalInstance,
     WasmHostFunctionInstance,
     WasmLocalFunctionInstance, WasmMemoryInstance,
     WasmStore)
@@ -427,11 +428,16 @@ def interpret_wasm_section(
             stack.append(val)
             stack.append(val)
         elif isinstance(op, GlobalGetInstruction):
-            val = store.globals_[module.globals[0].addr].value
+            val = store.globals_[module.globals[op.index].addr].value
             stack.append(val)
         elif isinstance(op, GlobalSetInstruction):
+            gvar = store.globals_.get(module.globals[op.index].addr)
+            if not gvar:
+                gvar = store.globals_[module.globals[op.index].addr] = WasmGlobalInstance()
+            if not gvar.mut:
+                trap(f'Variable {op.index} is not mutable')
             val = stack.pop()
-            store.globals_[module.globals[0].addr].value = val
+            gvar.value = val
 
         # 4.4.4. Memory Instructions
         elif isinstance(op, MemorySize):
