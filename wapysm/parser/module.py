@@ -50,6 +50,7 @@ class WasmGlobal():
 
     globaltype: WasmGlobalType
     init: List[InstructionBase]
+    addr: int
 
 class WasmElem():
     "2.5.7 Element Segments"

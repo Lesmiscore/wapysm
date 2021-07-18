@@ -1,6 +1,6 @@
 from typing import Callable, Dict, List, Literal, Optional
-from wapysm.parser.module import WasmMemory, WasmModule
-from ..opcode.numeric_generated import ConstantInstructionBase
+from ..execute.utils import WASM_VALUE
+from ..parser.module import WasmMemory, WasmModule
 from ..opcode import InstructionBase
 from ..parser.structure import WasmFunctionType
 
@@ -58,7 +58,7 @@ class WasmMemoryInstance(WasmMemory):
 
 class WasmGlobalInstance():
     " 4.2.9 Global Instances "
-    value: ConstantInstructionBase
+    value: WASM_VALUE
     mut: bool  # True if mutable, False if not
 
 class WasmExportInstance():

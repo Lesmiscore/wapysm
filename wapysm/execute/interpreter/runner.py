@@ -200,10 +200,12 @@ WASM_LABEL_CONTINUATION = Tuple[
 
 
 def interpret_wasm_section(
+    # parameters are effectively frame
     code: List[InstructionBase],
     memory: WasmMemoryInstance,
     module: WasmModule,
     store: WasmStore,
+    locals: Dict[int, WASM_VALUE],
     resulttype: List[VALTYPE_TYPE] = [],
 ) -> Tuple[Optional[WASM_VALUE], List[WASM_VALUE]]:
     stack: List[WASM_VALUE] = []
@@ -350,7 +352,7 @@ def interpret_wasm_section(
             break
         elif isinstance(op, Call):
             func = module.funcs[op.callidx]
-            interpret_wasm_section(func.body, memory, module, store, [])
+            interpret_wasm_section(func.body, memory, module, store, {}, [])
         elif isinstance(op, CallIndirect):
             ta = module.tables[0].tableaddr
             tab = store.tables[ta]
@@ -366,9 +368,9 @@ def interpret_wasm_section(
                 trap('type signature mismatch')
 
             if isinstance(f, WasmLocalFunctionInstance):
-                interpret_wasm_section(f.code, memory, f.module, store, [])
+                interpret_wasm_section(f.code, memory, f.module, store, {}, [])
             elif isinstance(f, WasmHostFunctionInstance):
-                # I forgot what should I pass here
+                # TODO: Host Functions
                 f.hostfunc(0)  # type: ignore
             else:
                 trap(f'unknown function: {repr(f)}')
@@ -415,15 +417,21 @@ def interpret_wasm_section(
 
         # 4.4.3. Variable Instructions
         elif isinstance(op, LocalGetInstruction):
-            pass
+            val = locals[op.index]
+            stack.append(val)
         elif isinstance(op, LocalSetInstruction):
-            pass
+            val = stack.pop()
+            locals[op.index] = val
         elif isinstance(op, LocalTeeInstruction):
-            pass
+            val = locals[op.index]
+            stack.append(val)
+            stack.append(val)
         elif isinstance(op, GlobalGetInstruction):
-            pass
+            val = store.globals_[module.globals[0].addr].value
+            stack.append(val)
         elif isinstance(op, GlobalSetInstruction):
-            pass
+            val = stack.pop()
+            store.globals_[module.globals[0].addr].value = val
 
         # 4.4.4. Memory Instructions
         elif isinstance(op, MemorySize):
