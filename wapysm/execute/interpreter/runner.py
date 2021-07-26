@@ -375,11 +375,15 @@ def interpret_wasm_section(
             elif isinstance(f, WasmHostFunctionInstance):
                 # Host Functions
                 ret = f.hostfunc(memory, store, module, locals)  # type: ignore
+                if isinstance(ret, int):
+                    ret = ('i', 32, ret)
+                elif isinstance(ret, float):
+                    ret = ('f', 32, ret)
+                elif isinstance(ret, tuple):
+                    pass
+                else:
+                    ret = None
                 if ret:
-                    if isinstance(ret, int):
-                        ret = ('i', 32, ret)
-                    elif isinstance(ret, float):
-                        ret = ('f', 32, ret)
                     stack.append(ret)
             else:
                 trap(f'unknown function: {repr(f)}')
