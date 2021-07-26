@@ -14,7 +14,7 @@ class WasmLocalFunctionInstance(WasmFunctionInstance):
     code: List[InstructionBase]
 
 class WasmHostFunctionInstance(WasmFunctionInstance):
-    hostfunc: Callable[[int], int]  # TODO: make it better
+    hostfunc: Callable[['WasmMemoryInstance', 'WasmStore', WasmModule, Dict[int, WASM_VALUE]], int]  # TODO: make it better
 
 
 class WasmTableInstance():

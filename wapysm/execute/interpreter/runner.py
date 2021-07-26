@@ -369,10 +369,18 @@ def interpret_wasm_section(
                 trap('type signature mismatch')
 
             if isinstance(f, WasmLocalFunctionInstance):
-                interpret_wasm_section(f.code, memory, f.module, store, {}, [])
+                ret, _ = interpret_wasm_section(f.code, memory, f.module, store, {}, ft_actual.return_types)
+                if ret:
+                    stack.append(ret)
             elif isinstance(f, WasmHostFunctionInstance):
-                # TODO: Host Functions
-                f.hostfunc(0)  # type: ignore
+                # Host Functions
+                ret = f.hostfunc(memory, store, module, locals)  # type: ignore
+                if ret:
+                    if isinstance(ret, int):
+                        ret = ('i', 32, ret)
+                    elif isinstance(ret, float):
+                        ret = ('f', 32, ret)
+                    stack.append(ret)
             else:
                 trap(f'unknown function: {repr(f)}')
 
