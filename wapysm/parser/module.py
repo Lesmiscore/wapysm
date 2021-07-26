@@ -111,22 +111,24 @@ class WasmGlobalSection():
     gt: WasmGlobalType
     e: List[InstructionBase]
 
+WASM_SECTION_TYPE =Union[
+    bytes,  # custom section and undefined ID
+    List[WasmFunctionType],  # type section
+    List[WasmImport],  # import section
+    List[int],  # function section
+    int,  # start section
+    List[WasmTableType],  # table section
+    List[WasmLimits],  # memory section
+    List[WasmGlobalSection],  # global section
+    List[WasmExport],  # export section
+    List[WasmElemUnresolved],  # element section
+    List[WasmCodeSection],  # code section
+    List[WasmData],  # data section
+]
+
 class WasmSection():
     section_id: int
-    section_content: Union[
-        bytes,  # custom section and undefined ID
-        List[WasmFunctionType],  # type section
-        List[WasmImport],  # import section
-        List[int],  # function section
-        int,  # start section
-        List[WasmTableType],  # table section
-        List[WasmLimits],  # memory section
-        List[WasmGlobalSection],  # global section
-        List[WasmExport],  # export section
-        List[WasmElemUnresolved],  # element section
-        List[WasmCodeSection],  # code section
-        List[WasmData],  # data section
-    ]
+    section_content: WASM_SECTION_TYPE
 
 class WasmParsedModule():
     version: int

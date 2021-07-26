@@ -5,6 +5,8 @@ from ..opcode import InstructionBase
 from ..parser.structure import WasmFunctionType
 
 
+WASM_HOST_FUNC = Callable[['WasmMemoryInstance', 'WasmStore', WasmModule, Dict[int, WASM_VALUE]], int]
+
 class WasmFunctionInstance():
     " 4.2.6 Function Instances "
     functype: WasmFunctionType
@@ -14,7 +16,7 @@ class WasmLocalFunctionInstance(WasmFunctionInstance):
     code: List[InstructionBase]
 
 class WasmHostFunctionInstance(WasmFunctionInstance):
-    hostfunc: Callable[['WasmMemoryInstance', 'WasmStore', WasmModule, Dict[int, WASM_VALUE]], int]  # TODO: make it better
+    hostfunc: WASM_HOST_FUNC
 
 
 class WasmTableInstance():
