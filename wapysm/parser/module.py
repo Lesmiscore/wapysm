@@ -117,7 +117,8 @@ class WasmSection():
         bytes,  # custom section and undefined ID
         List[WasmFunctionType],  # type section
         List[WasmImport],  # import section
-        List[int],  # function section and start section
+        List[int],  # function section
+        int,  # start section
         List[WasmTableType],  # table section
         List[WasmLimits],  # memory section
         List[WasmGlobalSection],  # global section

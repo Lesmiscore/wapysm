@@ -115,7 +115,7 @@ def parse_binary_wasm_sections(stream: io.RawIOBase) -> List[WasmSection]:
         elif section_id == 7:  # export section
             section.section_content = read_vector(limited, read_binary_export)
         elif section_id == 8:  # start section
-            section.section_content = read_vector(limited, read_leb128_unsigned)
+            section.section_content = read_leb128_unsigned(limited)
         elif section_id == 9:  # element section
             section.section_content = read_vector(limited, read_binary_elem)
         elif section_id == 10:  # code section
