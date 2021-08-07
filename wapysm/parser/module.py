@@ -1,6 +1,7 @@
 # Section 2.5 Modules
 
 from typing import Dict, List, Literal, Optional, Tuple, Union
+from wapysm.execute.context import WasmStore
 from ..opcode import InstructionBase
 from .structure import VALTYPE_TYPE, WasmFunctionType, WasmGlobalType, WasmLimits, WasmTableType
 
@@ -137,13 +138,19 @@ class WasmParsedModule():
 class WasmModule():
     # These types are temporary and subject to change
     types: Dict[int, WasmType]
-    funcs: Dict[int, WasmFunction]
-    tables: Dict[int, WasmTable]
+    # funcs: Dict[int, WasmFunction]
+    funcaddrs: Dict[int, int]
+    # tables: Dict[int, WasmTable]
+    tableaddrs: Dict[int, int]
     # mems: Dict[int, WasmMemory]
     memaddrs: Dict[int, int]
-    globals: Dict[int, WasmGlobal]
+    # globals: Dict[int, WasmGlobal]
+    globaladdrs: Dict[int, int]
+
     elem: Dict[int, WasmElem]
     data: Dict[int, WasmData]
     start: Optional[WasmFunction]
     imports: Dict[int, WasmImport]
     exports: Dict[int, WasmExport]
+
+    store: WasmStore

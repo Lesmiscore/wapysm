@@ -1,7 +1,6 @@
 from typing import Callable, Dict, List, Literal, Optional
 from ..execute.utils import WASM_VALUE
-from ..parser.module import WasmMemory, WasmModule
-from ..opcode import InstructionBase
+from ..parser.module import WasmFunction, WasmMemory, WasmModule, WasmTable
 from ..parser.structure import WasmFunctionType
 
 
@@ -13,16 +12,16 @@ class WasmFunctionInstance():
 
 class WasmLocalFunctionInstance(WasmFunctionInstance):
     module: WasmModule
-    code: List[InstructionBase]
+    wf: WasmFunction
 
 class WasmHostFunctionInstance(WasmFunctionInstance):
     hostfunc: WASM_HOST_FUNC
 
 
-class WasmTableInstance():
-    " 4.2.7 Table Instances "
-    funcaddrs: List[int]
-    maximum: int
+# class WasmTableInstance():
+#     " 4.2.7 Table Instances "
+#     funcaddrs: List[int]
+#     maximum: int
 
 
 WASM_PAGE_SIZE = 65536
@@ -73,7 +72,7 @@ class WasmExportInstance():
 class WasmStore():
     " 4.2.3 Store "
     funcs: Dict[int, WasmFunctionInstance]
-    tables: Dict[int, WasmTableInstance]
+    tables: Dict[int, WasmTable]
     mems: Dict[int, WasmMemoryInstance]
     globals_: Dict[int, WasmGlobalInstance]
 
