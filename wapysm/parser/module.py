@@ -14,7 +14,7 @@ class WasmType(WasmFunctionType):
 
 class WasmFunction():
     "2.5.3 Functions"
-    def __init__(self, wasm_mod, typeidx: int, locals: List[VALTYPE_TYPE], body: List[InstructionBase]) -> None:
+    def __init__(self, wasm_mod: 'WasmModule', typeidx: int, locals: List[VALTYPE_TYPE], body: List[InstructionBase]) -> None:
         self.wasm_mod = wasm_mod
         self.typeidx = typeidx
         self.locals = locals
@@ -111,7 +111,7 @@ class WasmGlobalSection():
     gt: WasmGlobalType
     e: List[InstructionBase]
 
-WASM_SECTION_TYPE =Union[
+WASM_SECTION_TYPE = Union[
     bytes,  # custom section and undefined ID
     List[WasmFunctionType],  # type section
     List[WasmImport],  # import section
