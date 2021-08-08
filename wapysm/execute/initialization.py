@@ -1,6 +1,8 @@
 from typing import Dict, List, Optional, cast
-from wapysm.parser.structure import VALTYPE_TYPE, WasmFunctionType, WasmLimits, WasmTableType
-from ..execute.context import WASM_HOST_FUNC, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
+from ..execute.utils import WASM_VALUE
+from ..execute.interpreter.runner import interpret_wasm_section
+from ..execute.context import WASM_HOST_FUNC, WasmGlobalInstance, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
+from ..parser.structure import VALTYPE_TYPE, WasmFunctionType, WasmLimits, WasmTableType
 from ..parser.module import WASM_SECTION_TYPE, WasmCodeSection, WasmData, WasmElemUnresolved, WasmExport, WasmFunction, WasmGlobalSection, WasmImport, WasmModule, WasmParsedModule, WasmTable, WasmType
 
 
@@ -12,10 +14,11 @@ def _next_addr(module: WasmModule) -> int:
 
 
 def allocate_function(
-        module: WasmModule,
-        functype: WasmFunctionType,
-        typeidx: int,
-        code: WasmCodeSection,
+    # FIXME: absolutely wrong code
+    module: WasmModule,
+    functype: WasmFunctionType,
+    typeidx: int,
+    code: WasmCodeSection,
 ) -> int:
     funcaddr = _next_addr(module)
     locals = cast(List[VALTYPE_TYPE], [x[1] for x in sorted(code.code.code_locals)])
@@ -51,6 +54,19 @@ def allocate_memory(
     module.memaddrs[len(module.memaddrs)] = memaddr
     module.store.mems[memaddr] = mem
     return memaddr
+
+
+def allocate_global(
+    module: WasmModule,
+    section: WasmGlobalSection,
+) -> int:
+    globaddr = _next_addr(module)
+    globl = WasmGlobalInstance()
+    globl.mut = section.gt.m
+    globl.value = cast(WASM_VALUE, interpret_wasm_section(section.e, module, module.store, {}, [section.gt.t])[0])
+    module.globaladdrs[len(module.globaladdrs)] = globaddr
+    module.store.globals_[globaddr] = globl
+    return globaddr
 
 
 def initialize_wasm_module(parsed: WasmParsedModule, imports: Dict[str, WASM_HOST_FUNC]) -> WasmModule:
@@ -90,5 +106,9 @@ def initialize_wasm_module(parsed: WasmParsedModule, imports: Dict[str, WASM_HOS
     mem_addrs = []
     for memr in memrs:
         mem_addrs.append(allocate_memory(ret_module, memr))
+
+    global_addrs = []
+    for glbl in glbls:
+        global_addrs.append(allocate_global(ret_module, glbl))
 
     return ret_module
