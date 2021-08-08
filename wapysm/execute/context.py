@@ -4,7 +4,7 @@ from ..parser.module import WasmFunction, WasmMemory, WasmModule, WasmTable
 from ..parser.structure import WasmFunctionType
 
 
-WASM_HOST_FUNC = Callable[['WasmMemoryInstance', 'WasmStore', WasmModule, Dict[int, WASM_VALUE]], int]
+WASM_HOST_FUNC = Callable[['WasmStore', WasmModule, Dict[int, WASM_VALUE]], int]
 
 class WasmFunctionInstance():
     " 4.2.6 Function Instances "

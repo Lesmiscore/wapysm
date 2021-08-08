@@ -6,7 +6,7 @@ from ...execute.context import (
     WASM_PAGE_SIZE,
     WasmGlobalInstance,
     WasmHostFunctionInstance,
-    WasmLocalFunctionInstance, WasmMemoryInstance,
+    WasmLocalFunctionInstance,
     WasmStore)
 from ...execute.utils import (
     WASM_VALUE, clamp, clamp_32bit, clamp_64bit,
@@ -203,7 +203,6 @@ WASM_LABEL_CONTINUATION = Tuple[
 def interpret_wasm_section(
     # parameters are effectively frame
     code: List[InstructionBase],
-    memory: WasmMemoryInstance,
     module: WasmModule,
     store: WasmStore,
     locals: Dict[int, WASM_VALUE],
@@ -352,16 +351,33 @@ def interpret_wasm_section(
             # is this correct?
             break
         elif isinstance(op, Call):
-            func = module.funcs[op.callidx]
-            interpret_wasm_section(func.body, memory, module, store, {}, [])
+            f = store.funcs[module.funcaddrs[op.callidx]]
+            if isinstance(f, WasmLocalFunctionInstance):
+                ret, _ = interpret_wasm_section(f.wf.body, f.module, store, {}, f.functype.return_types)
+                if ret:
+                    stack.append(ret)
+            elif isinstance(f, WasmHostFunctionInstance):
+                # Host Functions
+                ret = f.hostfunc(store, module, locals)  # type: ignore
+                if isinstance(ret, int):
+                    ret = ('i', 32, ret)
+                elif isinstance(ret, float):
+                    ret = ('f', 32, ret)
+                elif isinstance(ret, tuple):
+                    pass
+                else:
+                    ret = None
+                if ret:
+                    stack.append(ret)
+            else:
+                trap(f'unknown function: {repr(f)}')
         elif isinstance(op, CallIndirect):
-            ta = module.tables[0].tableaddr
-            tab = store.tables[ta]
+            tab = store.tables[module.tableaddrs[0]]
             ft_expect = module.types[op.typeidx]
-            operand_i = stack.pop()
-            if len(tab.funcaddrs) < operand_i[2]:
-                trap('funcaddrs out of range')
-            a = tab.funcaddrs[len(tab.funcaddrs)]
+            operand_i_value = stack.pop()[2]
+
+            a = tab.elem[cast(int, operand_i_value)]
+
             f = store.funcs[a]
             ft_actual = f.functype
 
@@ -369,12 +385,12 @@ def interpret_wasm_section(
                 trap('type signature mismatch')
 
             if isinstance(f, WasmLocalFunctionInstance):
-                ret, _ = interpret_wasm_section(f.code, memory, f.module, store, {}, ft_actual.return_types)
+                ret, _ = interpret_wasm_section(f.wf.body, f.module, store, {}, ft_actual.return_types)
                 if ret:
                     stack.append(ret)
             elif isinstance(f, WasmHostFunctionInstance):
                 # Host Functions
-                ret = f.hostfunc(memory, store, module, locals)  # type: ignore
+                ret = f.hostfunc(store, module, locals)  # type: ignore
                 if isinstance(ret, int):
                     ret = ('i', 32, ret)
                 elif isinstance(ret, float):
@@ -440,12 +456,12 @@ def interpret_wasm_section(
             stack.append(val)
             stack.append(val)
         elif isinstance(op, GlobalGetInstruction):
-            val = store.globals_[module.globals[op.index].addr].value
+            val = store.globals_[module.globaladdrs[op.index]].value
             stack.append(val)
         elif isinstance(op, GlobalSetInstruction):
-            gvar = store.globals_.get(module.globals[op.index].addr)
+            gvar = store.globals_.get(module.globaladdrs[op.index])
             if not gvar:
-                gvar = store.globals_[module.globals[op.index].addr] = WasmGlobalInstance()
+                gvar = store.globals_[module.globaladdrs[op.index]] = WasmGlobalInstance()
             if not gvar.mut:
                 trap(f'Variable {op.index} is not mutable')
             val = stack.pop()

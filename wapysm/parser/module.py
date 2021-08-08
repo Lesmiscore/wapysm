@@ -29,10 +29,12 @@ class WasmFunction():
 class WasmTable(WasmTableType):
     "2.5.4 Tables"
 
-    tableaddr: int
+    # value is funcaddr as per 4.2.7. Table Instances
+    elem: Dict[int, int]
 
     def __init__(self, elemtype: int, lim: WasmLimits) -> None:
         super().__init__(elemtype, lim)
+        self.max = lim.maximum
 
 class WasmMemory(WasmLimits):
     """
