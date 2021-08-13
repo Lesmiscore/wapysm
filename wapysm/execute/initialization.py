@@ -1,7 +1,7 @@
-from typing import Dict, List, Optional, cast
+from typing import Callable, Dict, List, Optional, cast
 from ..execute.utils import WASM_VALUE
 from ..execute.interpreter.runner import interpret_wasm_section
-from ..execute.context import WASM_HOST_FUNC, WasmGlobalInstance, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
+from ..execute.context import WASM_EXPORT_OBJECT, WasmGlobalInstance, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
 from ..parser.structure import VALTYPE_TYPE, WasmFunctionType, WasmLimits, WasmTableType
 from ..parser.module import WASM_SECTION_TYPE, WasmCodeSection, WasmData, WasmElemUnresolved, WasmExport, WasmFunction, WasmGlobalSection, WasmImport, WasmModule, WasmParsedModule, WasmTable, WasmType
 
@@ -69,7 +69,7 @@ def allocate_global(
     return globaddr
 
 
-def initialize_wasm_module(parsed: WasmParsedModule, imports: Dict[str, WASM_HOST_FUNC]) -> WasmModule:
+def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, WASM_EXPORT_OBJECT]) -> WasmModule:
     """ (Initialization of) 4.5.3.8. Modules """
     assert parsed.version == 1
     sections: Dict[int, List[WASM_SECTION_TYPE]] = {}
@@ -82,7 +82,7 @@ def initialize_wasm_module(parsed: WasmParsedModule, imports: Dict[str, WASM_HOS
     funcs: List[int] = [x for y in sections[3] for x in cast(List[int], y)]
     tabls: List[WasmTableType] = [x for y in sections[4] for x in cast(List[WasmTableType], y)]
     memrs: List[WasmLimits] = [x for y in sections[5] for x in cast(List[WasmLimits], y)]
-    glbls: List[WasmGlobalSection] = [x for y in sections[6] for x in cast(List[WasmGlobalSection], y)]  # noqa: F841
+    glbls: List[WasmGlobalSection] = [x for y in sections[6] for x in cast(List[WasmGlobalSection], y)]
     expts: List[WasmExport] = [x for y in sections[7] for x in cast(List[WasmExport], y)]  # noqa: F841
     strts: Optional[int] = cast(List[int], sections[8])[0]  # noqa: F841
     elems: List[WasmElemUnresolved] = [x for y in sections[9] for x in cast(List[WasmElemUnresolved], y)]  # noqa: F841
@@ -110,5 +110,7 @@ def initialize_wasm_module(parsed: WasmParsedModule, imports: Dict[str, WASM_HOS
     global_addrs = []
     for glbl in glbls:
         global_addrs.append(allocate_global(ret_module, glbl))
+
+    funcaddrs_mod = [k for k, v in sorted(externval.items()) if isinstance(v, Callable)]  # noqa: F841
 
     return ret_module

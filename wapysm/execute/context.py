@@ -1,6 +1,6 @@
-from typing import Callable, Dict, List, Literal, Optional
+from typing import Callable, Dict, List, Literal, Optional, Union
 from ..execute.utils import WASM_VALUE
-from ..parser.module import WasmFunction, WasmMemory, WasmModule, WasmTable
+from ..parser.module import WasmFunction, WasmGlobal, WasmMemory, WasmModule, WasmTable
 from ..parser.structure import WasmFunctionType
 
 
@@ -16,12 +16,6 @@ class WasmLocalFunctionInstance(WasmFunctionInstance):
 
 class WasmHostFunctionInstance(WasmFunctionInstance):
     hostfunc: WASM_HOST_FUNC
-
-
-# class WasmTableInstance():
-#     " 4.2.7 Table Instances "
-#     funcaddrs: List[int]
-#     maximum: int
 
 
 WASM_PAGE_SIZE = 65536
@@ -68,6 +62,7 @@ class WasmExportInstance():
     externval_type: Literal['func', 'table', 'mem', 'global']
     externval_addr: int
 
+WASM_EXPORT_OBJECT = Union[WASM_HOST_FUNC, WasmTable, WasmMemory, WasmGlobal]
 
 class WasmStore():
     " 4.2.3 Store "

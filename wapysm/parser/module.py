@@ -140,13 +140,9 @@ class WasmParsedModule():
 class WasmModule():
     # These types are temporary and subject to change
     types: Dict[int, WasmType]
-    # funcs: Dict[int, WasmFunction]
     funcaddrs: Dict[int, int]
-    # tables: Dict[int, WasmTable]
     tableaddrs: Dict[int, int]
-    # mems: Dict[int, WasmMemory]
     memaddrs: Dict[int, int]
-    # globals: Dict[int, WasmGlobal]
     globaladdrs: Dict[int, int]
 
     elem: Dict[int, WasmElem]
