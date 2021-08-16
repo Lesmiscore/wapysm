@@ -1,6 +1,6 @@
 from typing import Callable, Dict, List, Literal, Optional, Union
 from ..execute.utils import WASM_VALUE
-from ..parser.module import WasmFunction, WasmGlobal, WasmMemory, WasmModule, WasmTable
+from ..parser.module import WasmFunction, WasmMemory, WasmModule, WasmTable
 from ..parser.structure import WasmFunctionType
 
 
@@ -62,7 +62,7 @@ class WasmExportInstance():
     externval_type: Literal['func', 'table', 'mem', 'global']
     externval_addr: int
 
-WASM_EXPORT_OBJECT = Union[WASM_HOST_FUNC, WasmTable, WasmMemory, WasmGlobal]
+WASM_EXPORT_OBJECT = Union[WASM_HOST_FUNC, WasmTable, WasmMemoryInstance, WasmGlobalInstance]
 
 class WasmStore():
     " 4.2.3 Store "

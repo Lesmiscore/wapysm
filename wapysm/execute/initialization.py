@@ -1,7 +1,7 @@
 from typing import Callable, Dict, List, Optional, cast
 from ..execute.utils import WASM_VALUE
 from ..execute.interpreter.runner import interpret_wasm_section
-from ..execute.context import WASM_EXPORT_OBJECT, WasmGlobalInstance, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
+from ..execute.context import WASM_EXPORT_OBJECT, WASM_HOST_FUNC, WasmGlobalInstance, WasmHostFunctionInstance, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
 from ..parser.structure import VALTYPE_TYPE, WasmFunctionType, WasmLimits, WasmTableType
 from ..parser.module import WASM_SECTION_TYPE, WasmCodeSection, WasmData, WasmElemUnresolved, WasmExport, WasmFunction, WasmGlobalSection, WasmImport, WasmModule, WasmParsedModule, WasmTable, WasmType
 
@@ -33,6 +33,20 @@ def allocate_function(
     return funcaddr
 
 
+def allocate_host_function(
+    # FIXME: absolutely wrong code
+    module: WasmModule,
+    code: WASM_HOST_FUNC,
+) -> int:
+    funcaddr = _next_addr(module)
+    localfunc = WasmHostFunctionInstance()
+    localfunc.hostfunc = code
+    localfunc.functype = WasmType([], ['i32'], code.code.expr)
+    module.funcaddrs[len(module.funcaddrs)] = funcaddr
+    module.store.funcs[funcaddr] = localfunc
+    return funcaddr
+
+
 def allocate_table(
     module: WasmModule,
     tbl: WasmTableType,
@@ -41,6 +55,16 @@ def allocate_table(
     table = WasmTable(tbl.elemtype, tbl.lim)
     module.tableaddrs[len(module.tableaddrs)] = tableaddr
     # module.tables[tableaddr] = table
+    module.store.tables[tableaddr] = table
+    return tableaddr
+
+
+def allocate_external_table(
+    module: WasmModule,
+    table: WasmTable,
+) -> int:
+    tableaddr = _next_addr(module)
+    module.tableaddrs[len(module.tableaddrs)] = tableaddr
     module.store.tables[tableaddr] = table
     return tableaddr
 
@@ -56,6 +80,16 @@ def allocate_memory(
     return memaddr
 
 
+def allocate_external_memory(
+    module: WasmModule,
+    mem: WasmMemoryInstance,
+) -> int:
+    memaddr = _next_addr(module)
+    module.memaddrs[len(module.memaddrs)] = memaddr
+    module.store.mems[memaddr] = mem
+    return memaddr
+
+
 def allocate_global(
     module: WasmModule,
     section: WasmGlobalSection,
@@ -64,6 +98,15 @@ def allocate_global(
     globl = WasmGlobalInstance()
     globl.mut = section.gt.m
     globl.value = cast(WASM_VALUE, interpret_wasm_section(section.e, module, module.store, {}, [section.gt.t])[0])
+    module.globaladdrs[len(module.globaladdrs)] = globaddr
+    module.store.globals_[globaddr] = globl
+    return globaddr
+
+def allocate_external_global(
+    module: WasmModule,
+    globl: WasmGlobalInstance,
+) -> int:
+    globaddr = _next_addr(module)
     module.globaladdrs[len(module.globaladdrs)] = globaddr
     module.store.globals_[globaddr] = globl
     return globaddr
@@ -96,21 +139,31 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, WASM_E
     ret_module.store = WasmStore()
 
     func_addrs = []
+    table_addrs = []
+    mem_addrs = []
+    global_addrs = []
+    # allocate imported objects
+    for _, v in sorted(externval.items()):
+        if isinstance(v, Callable):
+            func_addrs.append(allocate_host_function(ret_module, cast(WASM_HOST_FUNC, v)))
+        elif isinstance(v, WasmTable):
+            table_addrs.append(allocate_external_table(ret_module, v))
+        elif isinstance(v, WasmMemoryInstance):
+            mem_addrs.append(allocate_external_memory(ret_module, v))
+        elif isinstance(v, WasmGlobalInstance):
+            table_addrs.append(allocate_external_global(ret_module, v))
+
+    # allocate local objects
     for funk, kode in zip(funcs, codes):
         func_addrs.append(allocate_function(ret_module, types[funk], funk, kode))
 
-    table_addrs = []
     for tabl in tabls:
         table_addrs.append(allocate_table(ret_module, tabl))
 
-    mem_addrs = []
     for memr in memrs:
         mem_addrs.append(allocate_memory(ret_module, memr))
 
-    global_addrs = []
     for glbl in glbls:
         global_addrs.append(allocate_global(ret_module, glbl))
-
-    funcaddrs_mod = [k for k, v in sorted(externval.items()) if isinstance(v, Callable)]  # noqa: F841
 
     return ret_module
