@@ -1,7 +1,7 @@
 # Section 2.5 Modules
 
 from typing import Dict, List, Literal, Optional, Tuple, Union
-from wapysm.execute.context import WasmStore
+from ..execute.context import WASM_EXPORT_RESOLVED, WasmStore
 from ..opcode import InstructionBase
 from .structure import VALTYPE_TYPE, WasmFunctionType, WasmGlobalType, WasmLimits, WasmTableType
 
@@ -100,6 +100,9 @@ class WasmExport():
     name: str
     exportdesc_type: Literal['func', 'table', 'mem', 'global']
     exportdesc_idx: int
+
+class WasmExportValue(WasmExport):
+    value: WASM_EXPORT_RESOLVED
 
 class WasmCodeFunction():
     code_locals: List[Tuple[int, VALTYPE_TYPE]]

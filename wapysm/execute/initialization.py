@@ -3,7 +3,7 @@ from ..execute.utils import WASM_VALUE
 from ..execute.interpreter.runner import interpret_wasm_section
 from ..execute.context import WASM_EXPORT_OBJECT, WASM_HOST_FUNC, WasmGlobalInstance, WasmHostFunctionInstance, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
 from ..parser.structure import VALTYPE_TYPE, WasmFunctionType, WasmLimits, WasmTableType
-from ..parser.module import WASM_SECTION_TYPE, WasmCodeSection, WasmData, WasmElemUnresolved, WasmExport, WasmFunction, WasmGlobalSection, WasmImport, WasmModule, WasmParsedModule, WasmTable, WasmType
+from ..parser.module import WASM_SECTION_TYPE, WasmCodeSection, WasmData, WasmElemUnresolved, WasmExport, WasmExportValue, WasmFunction, WasmGlobalSection, WasmImport, WasmModule, WasmParsedModule, WasmTable, WasmType
 
 
 def _next_addr(module: WasmModule) -> int:
@@ -151,7 +151,7 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, WASM_E
         elif isinstance(v, WasmMemoryInstance):
             mem_addrs.append(allocate_external_memory(ret_module, v))
         elif isinstance(v, WasmGlobalInstance):
-            table_addrs.append(allocate_external_global(ret_module, v))
+            global_addrs.append(allocate_external_global(ret_module, v))
 
     # allocate local objects
     for funk, kode in zip(funcs, codes):
@@ -166,4 +166,21 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, WASM_E
     for glbl in glbls:
         global_addrs.append(allocate_global(ret_module, glbl))
 
+    # process exports
+    for exp in expts:
+        wme = WasmExportValue()
+        wme.exportdesc_type = exp.exportdesc_type
+        wme.exportdesc_idx = exp.exportdesc_idx
+        wme.name = exp.name
+        if exp.exportdesc_type == 'func':
+            wme.value = ret_module.store.funcs[func_addrs[exp.exportdesc_idx]]
+        elif exp.exportdesc_type == 'table':
+            wme.value = ret_module.store.tables[table_addrs[exp.exportdesc_idx]]
+        elif exp.exportdesc_type == 'mem':
+            wme.value = ret_module.store.mems[mem_addrs[exp.exportdesc_idx]]
+        elif exp.exportdesc_type == 'global':
+            wme.value = ret_module.store.globals_[global_addrs[exp.exportdesc_idx]]
+        ret_module.exports[len(ret_module.exports)] = wme
+
+    # D O N E
     return ret_module
