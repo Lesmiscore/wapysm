@@ -237,7 +237,6 @@ def interpret_wasm_section(
                 # went out of code bounds, but no label to back
                 break
         op = code[idx]
-        print(op, idx, stack)
         idx += 1
 
         # Control Instructions
