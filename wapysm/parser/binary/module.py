@@ -3,7 +3,7 @@ import logging
 import struct
 from typing import List, Tuple
 from ..limitlength import LimitedRawIO
-from ..module import WasmCodeFunction, WasmCodeSection, WasmData, WasmElemUnresolved, WasmExport, WasmGlobalSection, WasmImport, WasmParsedModule, WasmSection
+from ...execute.context import WasmCodeFunction, WasmCodeSection, WasmData, WasmElemUnresolved, WasmExport, WasmGlobalSection, WasmImport, WasmParsedModule, WasmSection
 from ..structure import VALTYPE_TYPE
 from .byteencode import read_byte, read_bytes_typesafe, read_functype, read_globaltype, read_int32_le, read_leb128_unsigned, read_memtype, read_tabletype, read_utf8, read_valtype, read_vector, read_vector_bytes
 from .instruction import read_instructions

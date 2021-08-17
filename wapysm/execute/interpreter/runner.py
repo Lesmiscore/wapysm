@@ -7,7 +7,7 @@ from ...execute.context import (
     WasmGlobalInstance,
     WasmHostFunctionInstance,
     WasmLocalFunctionInstance,
-    WasmStore)
+    WasmStore, WasmModule)
 from ...execute.utils import (
     WASM_VALUE, clamp, clamp_32bit, clamp_64bit,
     trap, unclamp_32bit, unclamp_64bit,
@@ -54,7 +54,6 @@ from ...opcode.numeric_generated import (
     RelOperatorInstructionBase,
     TestOperatorInstructionBase,
     UnaryOperatorInstructionBase)
-from ...parser.module import WasmModule
 from ...parser.structure import VALTYPE_TYPE
 
 UNOP_FUNC: Dict[
@@ -171,8 +170,8 @@ CVTOP_FUNC: Dict[
     I64Trunc_f64_u: int,
     I64Trunc_f64_s: int,
 
-    F32Demote_f64: lambda a: struct.unpack('f<', struct.pack('f<', a))[0],
-    F64Promote_f32: lambda a: struct.unpack('d<', struct.pack('d<', a))[0],
+    F32Demote_f64: lambda a: struct.unpack('<f', struct.pack('<f', a))[0],
+    F64Promote_f32: lambda a: struct.unpack('<d', struct.pack('<d', a))[0],
 
     F32Convert_i32_u: lambda a: float(clamp_32bit(a)),
     F32Convert_i32_s: lambda a: float(unclamp_32bit(a)),
@@ -183,10 +182,10 @@ CVTOP_FUNC: Dict[
     F64Convert_i64_u: lambda a: float(clamp_64bit(a)),
     F64Convert_i64_s: lambda a: float(unclamp_64bit(a)),
 
-    I32Reinterpret_f32: lambda a: struct.unpack('I<', struct.pack('f<', a))[0],
-    I64Reinterpret_f64: lambda a: struct.unpack('L<', struct.pack('d<', a))[0],
-    F32Reinterpret_i32: lambda a: struct.unpack('f<', struct.pack('I<', a))[0],
-    F64Reinterpret_i64: lambda a: struct.unpack('d<', struct.pack('L<', a))[0],
+    I32Reinterpret_f32: lambda a: struct.unpack('<I', struct.pack('<f', a))[0],
+    I64Reinterpret_f64: lambda a: struct.unpack('<L', struct.pack('<d', a))[0],
+    F32Reinterpret_i32: lambda a: struct.unpack('<f', struct.pack('<I', a))[0],
+    F64Reinterpret_i64: lambda a: struct.unpack('<d', struct.pack('<L', a))[0],
 }
 
 WASM_LABEL_CONTINUATION = Tuple[
@@ -206,8 +205,10 @@ def interpret_wasm_section(
     module: WasmModule,
     store: WasmStore,
     locals: Dict[int, WASM_VALUE],
-    resulttype: List[VALTYPE_TYPE] = [],
+    resulttype: List[VALTYPE_TYPE] = None,
 ) -> Tuple[Optional[WASM_VALUE], List[WASM_VALUE]]:
+    if not resulttype:
+        resulttype = []
     stack: List[WASM_VALUE] = []
     current_block: Optional[BlockInstructionBase] = None
     current_label = 0
@@ -218,20 +219,26 @@ def interpret_wasm_section(
 
     # don't store len(code)
     while idx <= len(code) or is_loop:
-        op = code[idx]
-        idx += 1
-        if is_loop:
-            idx %= len(code)
-        elif idx == len(code):
-            if label_stack:
+        if idx == len(code):
+            if is_loop:
+                idx = 0
+                continue
+            elif label_stack:
                 # exit label
+                oldstack = list(stack)
+                oldrt = resulttype
                 # set "registers"
                 current_block, current_label, code, idx, stack, is_loop, resulttype = label_stack.pop()
                 # jump!
+                if oldrt:
+                    stack = stack + oldstack[-len(oldrt):]
                 continue
             else:
                 # went out of code bounds, but no label to back
                 break
+        op = code[idx]
+        print(op, idx, stack)
+        idx += 1
 
         # Control Instructions
         if isinstance(op, Nop):
@@ -299,15 +306,14 @@ def interpret_wasm_section(
             # find specified label
             lbl = op.labelidx
             oldstack = list(stack)
-            while label_stack:
+            oldrt = resulttype
+            cont = label_stack[-1]  # Unbound guard, meaningless
+            for i in range(lbl + 1):
                 cont = label_stack.pop()
-                if cont[1] == lbl:
-                    break
-            else:
-                trap(f'Can\'t find label ${lbl}')
             # set "registers"
             current_block, current_label, code, idx, stack, is_loop, resulttype = cont
-            stack = list(stack) + oldstack
+            if oldrt:
+                stack = stack + oldstack[-len(oldrt):]
             # jump!
             continue
         elif isinstance(op, BrIf):
@@ -317,15 +323,14 @@ def interpret_wasm_section(
                 # find specified label
                 lbl = op.labelidx
                 oldstack = list(stack)
-                while label_stack:
+                oldrt = resulttype
+                cont = label_stack[-1]  # Unbound guard, meaningless
+                for i in range(lbl + 1):
                     cont = label_stack.pop()
-                    if cont[1] == lbl:
-                        break
-                else:
-                    trap(f'Can\'t find label ${lbl}')
                 # set "registers"
                 current_block, current_label, code, idx, stack, is_loop, resulttype = cont
-                stack = list(stack) + oldstack
+                if oldrt:
+                    stack = stack + oldstack[-len(oldrt):]
                 # jump!
                 continue
         elif isinstance(op, BrTable):
@@ -336,15 +341,14 @@ def interpret_wasm_section(
                 lbl = op.lastlabel
             # find specified label
             oldstack = list(stack)
-            while label_stack:
+            oldrt = resulttype
+            cont = label_stack[-1]  # Unbound guard, meaningless
+            for i in range(lbl + 1):
                 cont = label_stack.pop()
-                if cont[1] == lbl:
-                    break
-            else:
-                trap(f'Can\'t find label ${lbl}')
             # set "registers"
             current_block, current_label, code, idx, stack, is_loop, resulttype = cont
-            stack = list(stack) + oldstack
+            if oldrt:
+                stack = stack + oldstack[-len(oldrt):]
             # jump!
             continue
         elif isinstance(op, Return):
@@ -452,8 +456,8 @@ def interpret_wasm_section(
             val = stack.pop()
             locals[op.index] = val
         elif isinstance(op, LocalTeeInstruction):
-            val = locals[op.index]
-            stack.append(val)
+            val = stack.pop()
+            locals[op.index] = val
             stack.append(val)
         elif isinstance(op, GlobalGetInstruction):
             val = store.globals_[module.globaladdrs[op.index]].value

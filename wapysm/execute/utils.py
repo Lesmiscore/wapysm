@@ -30,9 +30,9 @@ def clamp(tp: INT_OR_FLOAT, bits: VALID_BITS, value: Union[int, float]) -> WASM_
             raise Exception('Invalid bits: %d' % bits)
     elif tp == 'f':
         if bits == 32:
-            pack_arg = 'f<'
+            pack_arg = '<f'
         elif bits == 64:
-            pack_arg = 'd<'
+            pack_arg = '<d'
         else:
             raise Exception('Invalid bits: %d' % bits)
         return (tp, bits, struct.unpack(pack_arg, struct.pack(pack_arg, value))[0])
@@ -253,16 +253,16 @@ def wasm_irem_signed(a: int, b: int, bits: VALID_BITS) -> int:
 
 def wasm_ishl(a: int, b: int, bits: VALID_BITS) -> int:
     " 4.3.2.13. ishl "
-    return clamp_anybit(a, bits) << b
+    return clamp_anybit(a, bits) << (b % bits)
 
 def wasm_ishr_unsigned(a: int, b: int, bits: VALID_BITS) -> int:
     " 4.3.2.14. ishr_u "
-    return clamp_anybit(a, bits) >> b
+    return clamp_anybit(a, bits) >> (b % bits)
 
 def wasm_ishr_signed(a: int, b: int, bits: VALID_BITS) -> int:
     " 4.3.2.15. ishr_s "
     a = unclamp_anybit(a, bits)
-    return a >> b
+    return a >> (b % bits)
 
 
 def wasm_irotl(i: int, distance: int, bits: VALID_BITS) -> int:
