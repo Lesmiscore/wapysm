@@ -1,9 +1,9 @@
-from typing import Callable, Dict, List, Optional, cast
+from typing import Callable, Dict, List, cast
 from ..execute.utils import WASM_VALUE
 from ..execute.interpreter.runner import interpret_wasm_section
 from ..execute.context import WASM_EXPORT_OBJECT, WASM_HOST_FUNC, WasmGlobalInstance, WasmHostFunctionInstance, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
 from ..parser.structure import VALTYPE_TYPE, WasmFunctionType, WasmLimits, WasmTableType
-from ..parser.module import WASM_SECTION_TYPE, WasmCodeSection, WasmData, WasmElemUnresolved, WasmExport, WasmExportValue, WasmFunction, WasmGlobalSection, WasmImport, WasmModule, WasmParsedModule, WasmTable, WasmType
+from ..parser.module import WASM_SECTION_TYPE, WasmCodeSection, WasmExport, WasmExportValue, WasmFunction, WasmGlobalSection, WasmModule, WasmParsedModule, WasmTable, WasmType
 
 
 def _next_addr(module: WasmModule) -> int:
@@ -121,16 +121,16 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, WASM_E
             sections[sec.section_id] = []
         sections[sec.section_id].append(sec.section_content)
     types: List[WasmFunctionType] = [x for y in sections[1] for x in cast(List[WasmFunctionType], y)]
-    impos: List[WasmImport] = [x for y in sections[2] for x in cast(List[WasmImport], y)]  # noqa: F841
+    # impos: List[WasmImport] = [x for y in sections[2] for x in cast(List[WasmImport], y)]  # noqa: F841
     funcs: List[int] = [x for y in sections[3] for x in cast(List[int], y)]
     tabls: List[WasmTableType] = [x for y in sections[4] for x in cast(List[WasmTableType], y)]
     memrs: List[WasmLimits] = [x for y in sections[5] for x in cast(List[WasmLimits], y)]
     glbls: List[WasmGlobalSection] = [x for y in sections[6] for x in cast(List[WasmGlobalSection], y)]
-    expts: List[WasmExport] = [x for y in sections[7] for x in cast(List[WasmExport], y)]  # noqa: F841
-    strts: Optional[int] = cast(List[int], sections[8])[0]  # noqa: F841
-    elems: List[WasmElemUnresolved] = [x for y in sections[9] for x in cast(List[WasmElemUnresolved], y)]  # noqa: F841
+    expts: List[WasmExport] = [x for y in sections[7] for x in cast(List[WasmExport], y)]
+    # strts: Optional[int] = cast(int, next(iter(sections[8]), None))  # noqa: F841
+    # elems: List[WasmElemUnresolved] = [x for y in sections[9] for x in cast(List[WasmElemUnresolved], y)]  # noqa: F841
     codes: List[WasmCodeSection] = [x for y in sections[10] for x in cast(List[WasmCodeSection], y)]
-    datum: List[WasmData] = [x for y in sections[11] for x in cast(List[WasmData], y)]  # noqa: F841
+    # datum: List[WasmData] = [x for y in sections[11] for x in cast(List[WasmData], y)]  # noqa: F841
 
     # assert len(types) == len(funcs)
     assert len(funcs) == len(codes)
@@ -184,3 +184,9 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, WASM_E
 
     # D O N E
     return ret_module
+
+
+def instantiate_wasm_module(module: WasmModule, externval: Dict[str, WASM_EXPORT_OBJECT]):
+    """ (Instantiation of) 4.5.3.8. Modules """
+    # assert len(types) == len(funcs)
+    assert len(module.imports) == len(externval)
