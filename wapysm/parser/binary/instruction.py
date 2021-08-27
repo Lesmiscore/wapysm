@@ -261,7 +261,7 @@ OPCODE_TABLE: Dict[int, Type[InstructionBase]] = {
 }
 
 
-# Instruction without operand can be cached
+# Instruction without operands can be cached
 _INSTRUCTIONS_WITHOUT_OPERANDS: Set[int] = {x for rgn in [
     (0x00, 0x01),  # unreachable and nop
     [0x0F],  # return
@@ -317,7 +317,7 @@ def read_instructions(stream: io.RawIOBase) -> Tuple[READ_FINISH_REASON, List[In
             if cause == 'else':
                 cause, inst.else_block = read_instructions(stream)
             if cause != 'end':
-                raise Exception(f'"if" branch instruction must end with "end" opcode even it contains "else" block. was: {cause}')
+                raise Exception(f'"if" branch instruction must end with "end" opcode even if it contains "else" block. was: {cause}')
             result.append(inst)
         elif opcode == 0x0C or opcode == 0x0D:  # br*
             inst = cast(BranchInstructionBase, OPCODE_TABLE[opcode]())
@@ -336,7 +336,7 @@ def read_instructions(stream: io.RawIOBase) -> Tuple[READ_FINISH_REASON, List[In
             result.append(inst)
 
         # Memory Instructions (except memory.* which is handled above)
-        elif 0x28 <= opcode and opcode <= 0x3E:  # i32.load ~ 164.store
+        elif 0x28 <= opcode and opcode <= 0x3E:  # i32.load ~ i64.store
             inst = cast(MemoryLoadStoreInstructionBase, OPCODE_TABLE[opcode]())
             inst.align = read_leb128_unsigned(stream)
             inst.offset = read_leb128_unsigned(stream)

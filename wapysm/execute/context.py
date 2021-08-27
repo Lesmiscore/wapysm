@@ -60,13 +60,13 @@ class WasmElem():
 class WasmElemUnresolved():
     "2.5.7 Element Segments but indexes unresolved"
 
-    def __init__(self, tableidx: int, expr: List[InstructionBase], init: List[int]) -> None:
+    def __init__(self, tableidx: int, offset: List[InstructionBase], init: List[int]) -> None:
         self.tableidx = tableidx
-        self.expr = expr
+        self.offset = offset
         self.init = init
 
     tableidx: int
-    expr: List[InstructionBase]
+    offset: List[InstructionBase]
     init: List[int]
 
 class WasmData():
@@ -142,7 +142,7 @@ class WasmModule():
     data: Dict[int, WasmData]
     start: Optional[WasmFunction]
     imports: Dict[int, WasmImport]
-    exports: Dict[int, WasmExport]
+    exports: Dict[int, WasmExportValue]
 
     store: 'WasmStore'
 
@@ -176,6 +176,12 @@ class WasmMemoryInstance(WasmMemory):
     " 4.2.8 Memory Instances "
     pages: List[bytearray]
     maximum: Optional[int]
+
+    def __init__(self, minimum: int, maximum: Optional[int]) -> None:
+        super().__init__(minimum, maximum)
+        self.pages = []
+        for _ in range(minimum):
+            self.pages.append(bytearray(WASM_PAGE_SIZE))
 
     def __len__(self):
         return len(self.pages) * WASM_PAGE_SIZE

@@ -1,9 +1,9 @@
-from typing import Callable, Dict, List, cast
-from ..execute.utils import WASM_VALUE
-from ..execute.interpreter.runner import interpret_wasm_section
+from typing import Callable, Dict, List, Optional, cast
+from ..execute.utils import WASM_VALUE, trap
+from ..execute.interpreter.runner import interpret_wasm_section, invoke_wasm_function
 from ..execute.context import WASM_EXPORT_OBJECT, WASM_HOST_FUNC, WasmGlobalInstance, WasmHostFunctionInstance, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
 from ..parser.structure import VALTYPE_TYPE, WasmFunctionType, WasmLimits, WasmTableType
-from ..parser.module import WASM_SECTION_TYPE, WasmCodeSection, WasmExport, WasmExportValue, WasmFunction, WasmGlobalSection, WasmModule, WasmParsedModule, WasmTable, WasmType
+from .context import WASM_PAGE_SIZE, WASM_SECTION_TYPE, WasmCodeSection, WasmData, WasmElemUnresolved, WasmExport, WasmExportValue, WasmFunction, WasmGlobalSection, WasmModule, WasmParsedModule, WasmTable, WasmType
 
 
 def _next_addr(module: WasmModule) -> int:
@@ -121,16 +121,12 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, WASM_E
             sections[sec.section_id] = []
         sections[sec.section_id].append(sec.section_content)
     types: List[WasmFunctionType] = [x for y in sections[1] for x in cast(List[WasmFunctionType], y)]
-    # impos: List[WasmImport] = [x for y in sections[2] for x in cast(List[WasmImport], y)]  # noqa: F841
     funcs: List[int] = [x for y in sections[3] for x in cast(List[int], y)]
     tabls: List[WasmTableType] = [x for y in sections[4] for x in cast(List[WasmTableType], y)]
     memrs: List[WasmLimits] = [x for y in sections[5] for x in cast(List[WasmLimits], y)]
     glbls: List[WasmGlobalSection] = [x for y in sections[6] for x in cast(List[WasmGlobalSection], y)]
     expts: List[WasmExport] = [x for y in sections[7] for x in cast(List[WasmExport], y)]
-    # strts: Optional[int] = cast(int, next(iter(sections[8]), None))  # noqa: F841
-    # elems: List[WasmElemUnresolved] = [x for y in sections[9] for x in cast(List[WasmElemUnresolved], y)]  # noqa: F841
     codes: List[WasmCodeSection] = [x for y in sections[10] for x in cast(List[WasmCodeSection], y)]
-    # datum: List[WasmData] = [x for y in sections[11] for x in cast(List[WasmData], y)]  # noqa: F841
 
     # assert len(types) == len(funcs)
     assert len(funcs) == len(codes)
@@ -186,7 +182,77 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, WASM_E
     return ret_module
 
 
-def instantiate_wasm_module(module: WasmModule, externval: Dict[str, WASM_EXPORT_OBJECT]):
+def instantiate_wasm_module(module: WasmModule, parsed: WasmParsedModule, externval: Dict[str, WASM_EXPORT_OBJECT]):
     """ (Instantiation of) 4.5.3.8. Modules """
     # assert len(types) == len(funcs)
     assert len(module.imports) == len(externval)
+
+    sections: Dict[int, List[WASM_SECTION_TYPE]] = {}
+    for sec in parsed.sections:
+        if not sections[sec.section_id]:
+            sections[sec.section_id] = []
+        sections[sec.section_id].append(sec.section_content)
+    strts: Optional[int] = cast(int, next(iter(sections[8]), None))  # noqa: F841
+    elems: List[WasmElemUnresolved] = [x for y in sections[9] for x in cast(List[WasmElemUnresolved], y)]  # noqa: F841
+    datum: List[WasmData] = [x for y in sections[11] for x in cast(List[WasmData], y)]  # noqa: F841
+
+    # 4. ?
+    for addr, exp in module.exports.items():
+        if exp.exportdesc_type == 'func' and not isinstance(exp.value, Callable):
+            trap(f'addr {addr}: {exp.exportdesc_type} expected but {exp.value}')
+        elif exp.exportdesc_type == 'table' and not isinstance(exp.value, WasmTable):
+            trap(f'addr {addr}: {exp.exportdesc_type} expected but {exp.value}')
+        elif exp.exportdesc_type == 'mem' and not isinstance(exp.value, WasmMemoryInstance):
+            trap(f'addr {addr}: {exp.exportdesc_type} expected but {exp.value}')
+        elif exp.exportdesc_type == 'global' and not isinstance(exp.value, WasmGlobalInstance):
+            trap(f'addr {addr}: {exp.exportdesc_type} expected but {exp.value}')
+
+    eo: List[int] = []
+    for elem in elems:
+        eoval_wv, _ = interpret_wasm_section(elem.offset, module, module.store, {}, ['i32'])
+        assert eoval_wv
+        assert eoval_wv[0] == 'i', eoval_wv[1] == 32
+        eoval = eoval_wv[2]
+        eo.append(cast(int, eoval))
+        tableidx = elem.tableidx
+        tableaddr = module.tableaddrs[tableidx]
+        tableinst = module.store.tables[tableaddr]
+        eend = eoval + len(elem.init)
+        if eend > len(tableinst.elem):
+            trap(f'eend > len(tableinst.elem): {eend} > {len(tableinst.elem)}')
+
+    do = []
+    for data in datum:
+        doval_wv, _ = interpret_wasm_section(data.offset, module, module.store, {}, ['i32'])
+        assert doval_wv
+        assert doval_wv[0] == 'i', doval_wv[1] == 32
+        doval = doval_wv[2]
+        do.append(cast(int, doval))
+        memidx = data.memidx
+        memaddr = module.memaddrs[memidx]
+        meminst = module.store.mems[memaddr]
+        dend = doval + len(data.init)
+        if dend > len(meminst) * WASM_PAGE_SIZE:
+            trap(f'dend > len(meminst) * WASM_PAGE_SIZE: {dend} > {len(meminst) * WASM_PAGE_SIZE}')
+
+
+    for idx, elem in enumerate(elems):
+        tableidx = elem.tableidx
+        tableaddr = module.tableaddrs[tableidx]
+        tableinst = module.store.tables[tableaddr]
+        for jdx, funcidx in enumerate(elem.init):
+            funcaddr = module.funcaddrs[funcidx]
+            tableinst.elem[eo[idx] + jdx] = funcaddr
+
+    for idx, data in enumerate(datum):
+        memidx = data.memidx
+        memaddr = module.memaddrs[memidx]
+        meminst = module.store.mems[memaddr]
+        for jdx, b in enumerate(data.init):
+            meminst[do[idx] + jdx] = b
+
+    if strts is not None:
+        # start section itself is funcaddr for now
+        funcaddr = module.funcaddrs[strts]
+        func = module.store.funcs[funcaddr]
+        invoke_wasm_function(func, module, module.store, [], [])

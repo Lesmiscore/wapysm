@@ -4,6 +4,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Type, Union, cast
 
 from ...execute.context import (
     WASM_PAGE_SIZE,
+    WasmFunctionInstance,
     WasmGlobalInstance,
     WasmHostFunctionInstance,
     WasmLocalFunctionInstance,
@@ -188,6 +189,27 @@ CVTOP_FUNC: Dict[
     F64Reinterpret_i64: lambda a: struct.unpack('<d', struct.pack('<L', a))[0],
 }
 
+def invoke_wasm_function(f: WasmFunctionInstance, module: WasmModule, store: WasmStore, rettype: List[VALTYPE_TYPE], stack: List[WASM_VALUE]):
+    if isinstance(f, WasmLocalFunctionInstance):
+        ret, _ = interpret_wasm_section(f.wf.body, f.module, store, {}, rettype)
+        if ret:
+            stack.append(ret)
+    elif isinstance(f, WasmHostFunctionInstance):
+        # Host Functions
+        ret = f.hostfunc(store, module, locals)  # type: ignore
+        if isinstance(ret, int):
+            ret = ('i', 32, ret)
+        elif isinstance(ret, float):
+            ret = ('f', 32, ret)
+        elif isinstance(ret, tuple):
+            pass
+        else:
+            ret = None
+        if ret:
+            stack.append(ret)
+    else:
+        trap(f'unknown function: {repr(f)}')
+
 WASM_LABEL_CONTINUATION = Tuple[
     Optional[BlockInstructionBase],  # instruction that triggered label block
     int,  # label
@@ -355,25 +377,7 @@ def interpret_wasm_section(
             break
         elif isinstance(op, Call):
             f = store.funcs[module.funcaddrs[op.callidx]]
-            if isinstance(f, WasmLocalFunctionInstance):
-                ret, _ = interpret_wasm_section(f.wf.body, f.module, store, {}, f.functype.return_types)
-                if ret:
-                    stack.append(ret)
-            elif isinstance(f, WasmHostFunctionInstance):
-                # Host Functions
-                ret = f.hostfunc(store, module, locals)  # type: ignore
-                if isinstance(ret, int):
-                    ret = ('i', 32, ret)
-                elif isinstance(ret, float):
-                    ret = ('f', 32, ret)
-                elif isinstance(ret, tuple):
-                    pass
-                else:
-                    ret = None
-                if ret:
-                    stack.append(ret)
-            else:
-                trap(f'unknown function: {repr(f)}')
+            invoke_wasm_function(f, module, store, f.functype.return_types, stack)
         elif isinstance(op, CallIndirect):
             tab = store.tables[module.tableaddrs[0]]
             ft_expect = module.types[op.typeidx]
@@ -387,25 +391,7 @@ def interpret_wasm_section(
             if ft_expect != ft_actual:
                 trap('type signature mismatch')
 
-            if isinstance(f, WasmLocalFunctionInstance):
-                ret, _ = interpret_wasm_section(f.wf.body, f.module, store, {}, ft_actual.return_types)
-                if ret:
-                    stack.append(ret)
-            elif isinstance(f, WasmHostFunctionInstance):
-                # Host Functions
-                ret = f.hostfunc(store, module, locals)  # type: ignore
-                if isinstance(ret, int):
-                    ret = ('i', 32, ret)
-                elif isinstance(ret, float):
-                    ret = ('f', 32, ret)
-                elif isinstance(ret, tuple):
-                    pass
-                else:
-                    ret = None
-                if ret:
-                    stack.append(ret)
-            else:
-                trap(f'unknown function: {repr(f)}')
+            invoke_wasm_function(f, module, store, ft_actual.return_types, stack)
 
         # Constant Instruction
         elif isinstance(op, ConstantInstructionBase):
