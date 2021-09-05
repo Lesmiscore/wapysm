@@ -132,6 +132,18 @@ class WasmParsedModule():
 
 class WasmModule():
     # These types are temporary and subject to change
+    def __init__(self) -> None:
+        self.types = {}
+        self.funcaddrs = {}
+        self.tableaddrs = {}
+        self.memaddrs = {}
+        self.globaladdrs = {}
+        self.elem = {}
+        self.data = {}
+        self.start = None
+        self.imports = {}
+        self.exports = {}
+
     types: Dict[int, WasmType]
     funcaddrs: Dict[int, int]
     tableaddrs: Dict[int, int]

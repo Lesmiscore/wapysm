@@ -1,7 +1,8 @@
 # flake8: noqa: E704,E701,E222
 
-from math import copysign, floor, isinf, isnan, sqrt, trunc
-from typing import Tuple, Union
+from math import copysign, floor, isinf, isnan, sqrt
+from typing import Tuple, Union, cast
+from ..parser.structure import VALTYPE_TYPE
 from ..opcode.numeric_generated import INT_OR_FLOAT, VALID_BITS
 from ..opcode import InstructionBase
 import struct
@@ -325,3 +326,6 @@ def wasm_i32_unsigned_to_i64(a: int) -> int:
 def wasm_i32_signed_to_i64(a: int) -> int:
     # bits beyond 64bit is acceptable; it's get trimmed somewhere
     return unclamp_32bit(a)
+
+def typeof(value: WASM_VALUE) -> VALTYPE_TYPE:
+    return cast(VALTYPE_TYPE, f'{value[0]}{value[1]}')
