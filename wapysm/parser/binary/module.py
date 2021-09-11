@@ -1,7 +1,6 @@
-import io
 import logging
 import struct
-from typing import List, Tuple
+from typing import List, Tuple, IO
 from ..limitlength import LimitedRawIO
 from ...execute.context import WasmCodeFunction, WasmCodeSection, WasmData, WasmElemUnresolved, WasmExport, WasmGlobalSection, WasmImport, WasmParsedModule, WasmSection
 from ..structure import VALTYPE_TYPE
@@ -10,7 +9,7 @@ from .instruction import read_instructions
 
 logger = logging.getLogger('wapysm.parser.binary.module')
 
-def read_binary_import(stream: io.RawIOBase) -> WasmImport:
+def read_binary_import(stream: IO[bytes]) -> WasmImport:
     "5.5.5 Import Section"
 
     wim = WasmImport()
@@ -29,13 +28,13 @@ def read_binary_import(stream: io.RawIOBase) -> WasmImport:
 
     return wim
 
-def read_global_section(stream: io.RawIOBase) -> WasmGlobalSection:
+def read_global_section(stream: IO[bytes]) -> WasmGlobalSection:
     sect = WasmGlobalSection()
     sect.gt = read_globaltype(stream)
     _, sect.e = read_instructions(stream)
     return sect
 
-def read_binary_export(stream: io.RawIOBase) -> WasmExport:
+def read_binary_export(stream: IO[bytes]) -> WasmExport:
     "5.5.10 Export Section"
 
     wex = WasmExport()
@@ -54,7 +53,7 @@ def read_binary_export(stream: io.RawIOBase) -> WasmExport:
 
     return wex
 
-def read_binary_elem(stream: io.RawIOBase) -> WasmElemUnresolved:
+def read_binary_elem(stream: IO[bytes]) -> WasmElemUnresolved:
     "5.5.12 Element Section"
 
     tableidx = read_leb128_unsigned(stream)
@@ -62,10 +61,10 @@ def read_binary_elem(stream: io.RawIOBase) -> WasmElemUnresolved:
     init = read_vector(stream, read_leb128_unsigned)
     return WasmElemUnresolved(tableidx, expr, init)
 
-def read_binary_code_function(stream: io.RawIOBase) -> WasmCodeFunction:
+def read_binary_code_function(stream: IO[bytes]) -> WasmCodeFunction:
     wcode = WasmCodeFunction()
 
-    def read_locals(stream: io.RawIOBase) -> Tuple[int, VALTYPE_TYPE]:
+    def read_locals(stream: IO[bytes]) -> Tuple[int, VALTYPE_TYPE]:
         n = read_leb128_unsigned(stream)
         type = read_valtype(stream)
         return n, type
@@ -74,19 +73,19 @@ def read_binary_code_function(stream: io.RawIOBase) -> WasmCodeFunction:
     _, wcode.expr = read_instructions(stream)
     return wcode
 
-def read_binary_code_section(stream: io.RawIOBase) -> WasmCodeSection:
+def read_binary_code_section(stream: IO[bytes]) -> WasmCodeSection:
     wcode = WasmCodeSection()
     wcode.size = read_leb128_unsigned(stream)
     wcode.code = read_binary_code_function(stream)
     return wcode
 
-def read_binary_data_section(stream: io.RawIOBase) -> WasmData:
+def read_binary_data_section(stream: IO[bytes]) -> WasmData:
     memidx = read_leb128_unsigned(stream)
     _, expr = read_instructions(stream)
     data = read_vector_bytes(stream)
     return WasmData(memidx, expr, data)
 
-def parse_binary_wasm_sections(stream: io.RawIOBase) -> List[WasmSection]:
+def parse_binary_wasm_sections(stream: IO[bytes]) -> List[WasmSection]:
     sections: List[WasmSection] = []
     while True:
         try:
@@ -130,7 +129,7 @@ def parse_binary_wasm_sections(stream: io.RawIOBase) -> List[WasmSection]:
 
     return sections
 
-def parse_binary_wasm_module(stream: io.RawIOBase) -> WasmParsedModule:
+def parse_binary_wasm_module(stream: IO[bytes]) -> WasmParsedModule:
     magic = read_bytes_typesafe(stream, 4)
     if magic != b'\x00asm':
         raise Exception('Input does not have valid WASM header')

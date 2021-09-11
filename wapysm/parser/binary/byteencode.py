@@ -7,9 +7,9 @@ from ..structure import (
     TYPES_TO_TYPENUMBER, TYPES_TO_TYPENAME,
     WasmFunctionType, WasmLimits, WasmTableType, WasmGlobalType,
 )
-from typing import List, Callable, TypeVar
+from typing import List, Callable, TypeVar, IO
 
-BIO = io.RawIOBase
+BIO = IO[bytes]
 T = TypeVar('T')
 
 
