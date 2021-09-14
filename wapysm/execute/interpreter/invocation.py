@@ -1,15 +1,18 @@
 import itertools
-from typing import List, Optional
-from wapysm.parser.structure import VALTYPE_TYPE
+from typing import List, Optional, Union
 
+from ...parser.structure import VALTYPE_TYPE
 from ...execute.utils import WASM_VALUE, typeof
 from ...execute.context import (
     WasmFunctionInstance,
     WasmStore, WasmModule)
 from .runner import invoke_wasm_function
 
-def invoke_function_external(funcaddr: int, store: WasmStore, rettype: List[VALTYPE_TYPE], exec_args: List[WASM_VALUE]) -> Optional[WASM_VALUE]:
-    funcinst: WasmFunctionInstance = store.funcs[funcaddr]
+def invoke_function_external(funcaddr_or_func: Union[int, WasmFunctionInstance], store: WasmStore, rettype: List[VALTYPE_TYPE], exec_args: List[WASM_VALUE]) -> Optional[WASM_VALUE]:
+    if isinstance(funcaddr_or_func, int):
+        funcinst: WasmFunctionInstance = store.funcs[funcaddr_or_func]
+    else:
+        funcinst = funcaddr_or_func
     functype = funcinst.functype
     if len(functype.argument_types) != len(exec_args):
         raise Exception(f'Length of accepted arguments and given arguments differs. ({len(functype.argument_types)} vs {len(exec_args)})')
