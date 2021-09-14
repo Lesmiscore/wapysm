@@ -39,14 +39,14 @@ class WebAssembly:
         return WebAssembly(module, parsed_module)
 
     @staticmethod
-    def compile(buffer_source: Union[bytearray, bytes], import_object: Dict[str, WASM_EXPORT_OBJECT]) -> WasmParsedModule:
+    def compile(buffer_source: Union[bytearray, bytes]) -> WasmParsedModule:
         """
         https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compile
         """
-        return WebAssembly.compile_streaming(BytesIO(buffer_source), import_object)
+        return WebAssembly.compile_streaming(BytesIO(buffer_source))
 
     @staticmethod
-    def compile_streaming(source: IO[bytes], import_object: Dict[str, WASM_EXPORT_OBJECT]) -> WasmParsedModule:
+    def compile_streaming(source: IO[bytes]) -> WasmParsedModule:
         """
         https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compileStreaming
         """
