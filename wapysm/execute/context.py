@@ -28,11 +28,14 @@ class WasmTable(WasmTableType):
     "2.5.4 Tables"
 
     # value is funcaddr as per 4.2.7. Table Instances
-    elem: Dict[int, int]
+    elem_addrs: Dict[int, int]
+    elem: Dict[int, 'WasmFunctionInstance']
 
     def __init__(self, elemtype: int, lim: WasmLimits) -> None:
         super().__init__(elemtype, lim)
         self.max = lim.maximum
+        self.elem_addrs = {}
+        self.elem = {}
 
 class WasmGlobal():
     "2.5.6 Globals"
@@ -231,6 +234,12 @@ WASM_EXPORT_RESOLVED = Union[WasmFunctionInstance, WasmTable, WasmMemoryInstance
 
 class WasmStore():
     " 4.2.3 Store "
+    def __init__(self) -> None:
+        self.funcs = {}
+        self.tables = {}
+        self.mems = {}
+        self.globals_ = {}
+
     funcs: Dict[int, WasmFunctionInstance]
     tables: Dict[int, WasmTable]
     mems: Dict[int, WasmMemoryInstance]

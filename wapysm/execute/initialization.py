@@ -53,8 +53,8 @@ def allocate_table(
 ) -> int:
     tableaddr = _next_addr(module)
     table = WasmTable(tbl.elemtype, tbl.lim)
+    table.elem_addrs = {n: 0 for n in range(tbl.lim.minimum)}
     module.tableaddrs[len(module.tableaddrs)] = tableaddr
-    # module.tables[tableaddr] = table
     module.store.tables[tableaddr] = table
     return tableaddr
 
@@ -116,9 +116,9 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, WASM_E
     """ (Initialization of) 4.5.3.8. Modules """
     assert parsed.version == 1
     sections: Dict[int, List[WASM_SECTION_TYPE]] = {}
+    for s in range(11):
+        sections[s] = []
     for sec in parsed.sections:
-        if not sections[sec.section_id]:
-            sections[sec.section_id] = []
         sections[sec.section_id].append(sec.section_content)
     types: List[WasmFunctionType] = [x for y in sections[1] for x in cast(List[WasmFunctionType], y)]
     funcs: List[int] = [x for y in sections[3] for x in cast(List[int], y)]
@@ -188,9 +188,9 @@ def instantiate_wasm_module(module: WasmModule, parsed: WasmParsedModule, extern
     assert len(module.imports) == len(externval)
 
     sections: Dict[int, List[WASM_SECTION_TYPE]] = {}
+    for s in range(12):
+        sections[s] = []
     for sec in parsed.sections:
-        if not sections[sec.section_id]:
-            sections[sec.section_id] = []
         sections[sec.section_id].append(sec.section_content)
     strts: Optional[int] = cast(int, next(iter(sections[8]), None))  # noqa: F841
     elems: List[WasmElemUnresolved] = [x for y in sections[9] for x in cast(List[WasmElemUnresolved], y)]  # noqa: F841
@@ -218,8 +218,8 @@ def instantiate_wasm_module(module: WasmModule, parsed: WasmParsedModule, extern
         tableaddr = module.tableaddrs[tableidx]
         tableinst = module.store.tables[tableaddr]
         eend = eoval + len(elem.init)
-        if eend > len(tableinst.elem):
-            trap(f'eend > len(tableinst.elem): {eend} > {len(tableinst.elem)}')
+        if eend > len(tableinst.elem_addrs):
+            trap(f'eend > len(tableinst.elem): {eend} > {len(tableinst.elem_addrs)}')
 
     do = []
     for data in datum:
@@ -242,7 +242,8 @@ def instantiate_wasm_module(module: WasmModule, parsed: WasmParsedModule, extern
         tableinst = module.store.tables[tableaddr]
         for jdx, funcidx in enumerate(elem.init):
             funcaddr = module.funcaddrs[funcidx]
-            tableinst.elem[eo[idx] + jdx] = funcaddr
+            tableinst.elem_addrs[eo[idx] + jdx] = funcaddr
+            tableinst.elem[eo[idx] + jdx] = module.store.funcs[funcaddr]
 
     for idx, data in enumerate(datum):
         memidx = data.memidx

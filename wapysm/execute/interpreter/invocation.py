@@ -24,3 +24,20 @@ def invoke_function_external(funcaddr_or_func: Union[int, WasmFunctionInstance],
     stack: List[WASM_VALUE] = []
     invoke_wasm_function(funcinst, dummy_mod, store, rettype, stack)
     return stack[0] if stack else None
+
+
+def wrap_function(f: WasmFunctionInstance, store: WasmStore, rettype: List[VALTYPE_TYPE] = None):
+    if not rettype:
+        rettype = []
+
+    def exec(*args):
+        args_converted: List[WASM_VALUE] = []
+        for a in args:
+            if isinstance(a, int):
+                args_converted.append(('i', 32, a))
+            elif isinstance(a, float):
+                args_converted.append(('f', 32, a))
+            else:
+                args_converted.append(('i', 32, -1))
+        return invoke_function_external(f, store, rettype, args_converted)
+    return exec

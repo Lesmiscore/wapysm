@@ -383,7 +383,7 @@ def interpret_wasm_section(
             ft_expect = module.types[op.typeidx]
             operand_i_value = stack.pop()[2]
 
-            a = tab.elem[cast(int, operand_i_value)]
+            a = tab.elem_addrs[cast(int, operand_i_value)]
 
             f = store.funcs[a]
             ft_actual = f.functype

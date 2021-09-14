@@ -1,5 +1,5 @@
 {
-  "*.py": ["flake8", "env MYPYPATH=$(pwd) mypy"],
+  "*.py": ["flake8", "true env MYPYPATH=$(pwd) mypy"],
   "*.{js,json}": ["npx prettier --print-width 200 --write"],
   "*.sh": ["shellcheck"]
 }
