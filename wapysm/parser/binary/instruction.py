@@ -1,7 +1,6 @@
 # 5.4 Instructions
-import io
 import logging
-from typing import Dict, List, Literal, Set, Tuple, Type, cast
+from typing import IO, Dict, List, Literal, Set, Tuple, Type, cast
 from .byteencode import read_blocktype, read_byte, read_float32, read_float64, read_leb128_unsigned, read_vector
 
 from ...opcode import (
@@ -273,7 +272,7 @@ _INSTRUCTION_CACHE: Dict[int, InstructionBase] = {}
 
 READ_FINISH_REASON = Literal['eof', 'else', 'end']
 
-def read_instructions(stream: io.RawIOBase) -> Tuple[READ_FINISH_REASON, List[InstructionBase]]:
+def read_instructions(stream: IO[bytes]) -> Tuple[READ_FINISH_REASON, List[InstructionBase]]:
     result: List[InstructionBase] = []
     while True:
         try:

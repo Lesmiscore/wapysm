@@ -1,6 +1,5 @@
 # wasm-core-1 5.2
 
-import io
 import struct
 from ..structure import (
     VALTYPE_STRINGS, VALTYPE_TYPE,
@@ -94,13 +93,13 @@ def write_int32_le(strm: BIO, value: int):
 # wasm-core-1 5.1
 
 
-def read_vector(strm: BIO, read_function: Callable[[io.RawIOBase], T]) -> List[T]:
+def read_vector(strm: BIO, read_function: Callable[[BIO], T]) -> List[T]:
     elements: List[T] = []
     for _ in range(read_leb128_unsigned(strm)):
         elements.append(read_function(strm))
     return elements
 
-def write_vector(strm: BIO, elements: List[T], write_function: Callable[[io.RawIOBase, T], None]):
+def write_vector(strm: BIO, elements: List[T], write_function: Callable[[BIO, T], None]):
     write_leb128_signed(strm, len(elements))
     for element in elements:
         write_function(strm, element)
