@@ -1,9 +1,9 @@
 from typing import Callable, Dict, List, Optional, cast
-from ..execute.utils import WASM_VALUE, trap
+from ..execute.utils import WASM_VALUE, lenlen, trap
 from ..execute.interpreter.runner import interpret_wasm_section, invoke_wasm_function
 from ..execute.context import WASM_EXPORT_OBJECT, WASM_HOST_FUNC, WasmGlobalInstance, WasmHostFunctionInstance, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
 from ..parser.structure import VALTYPE_TYPE, WasmFunctionType, WasmLimits, WasmTableType
-from .context import WASM_PAGE_SIZE, WASM_SECTION_TYPE, WasmCodeSection, WasmData, WasmElemUnresolved, WasmExport, WasmExportValue, WasmFunction, WasmGlobalSection, WasmModule, WasmParsedModule, WasmTable, WasmType
+from .context import WASM_PAGE_SIZE, WASM_SECTION_TYPE, WasmCodeSection, WasmData, WasmElemUnresolved, WasmExport, WasmExportValue, WasmFunction, WasmFunctionInstance, WasmGlobalSection, WasmImport, WasmModule, WasmParsedModule, WasmTable, WasmType
 
 
 def _next_addr(module: WasmModule) -> int:
@@ -112,7 +112,7 @@ def allocate_external_global(
     return globaddr
 
 
-def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, WASM_EXPORT_OBJECT]) -> WasmModule:
+def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, Dict[str, WASM_EXPORT_OBJECT]]) -> WasmModule:
     """ (Initialization of) 4.5.3.8. Modules """
     assert parsed.version == 1
     sections: Dict[int, List[WASM_SECTION_TYPE]] = {}
@@ -139,7 +139,7 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, WASM_E
     mem_addrs = []
     global_addrs = []
     # allocate imported objects
-    for _, v in sorted(externval.items()):
+    for _, _, v in sorted((k1, k2, v) for k1, sm in externval.items() for k2, v in sm.items()):
         if isinstance(v, Callable):
             func_addrs.append(allocate_host_function(ret_module, cast(WASM_HOST_FUNC, v)))
         elif isinstance(v, WasmTable):
@@ -182,23 +182,24 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, WASM_E
     return ret_module
 
 
-def instantiate_wasm_module(module: WasmModule, parsed: WasmParsedModule, externval: Dict[str, WASM_EXPORT_OBJECT]):
+def instantiate_wasm_module(module: WasmModule, parsed: WasmParsedModule, externval: Dict[str, Dict[str, WASM_EXPORT_OBJECT]]):
     """ (Instantiation of) 4.5.3.8. Modules """
-    # assert len(types) == len(funcs)
-    assert len(module.imports) == len(externval)
 
     sections: Dict[int, List[WASM_SECTION_TYPE]] = {}
     for s in range(12):
         sections[s] = []
     for sec in parsed.sections:
         sections[sec.section_id].append(sec.section_content)
+    impts: List[WasmImport] = [x for y in sections[2] for x in cast(List[WasmImport], y)]  # noqa: F841
     strts: Optional[int] = cast(int, next(iter(sections[8]), None))  # noqa: F841
     elems: List[WasmElemUnresolved] = [x for y in sections[9] for x in cast(List[WasmElemUnresolved], y)]  # noqa: F841
     datum: List[WasmData] = [x for y in sections[11] for x in cast(List[WasmData], y)]  # noqa: F841
 
+    assert len(impts) == lenlen(externval)
+
     # 4. ?
     for addr, exp in module.exports.items():
-        if exp.exportdesc_type == 'func' and not isinstance(exp.value, Callable):
+        if exp.exportdesc_type == 'func' and not isinstance(exp.value, WasmFunctionInstance):
             trap(f'addr {addr}: {exp.exportdesc_type} expected but {exp.value}')
         elif exp.exportdesc_type == 'table' and not isinstance(exp.value, WasmTable):
             trap(f'addr {addr}: {exp.exportdesc_type} expected but {exp.value}')

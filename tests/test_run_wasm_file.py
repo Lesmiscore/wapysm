@@ -7,7 +7,8 @@ import requests
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from wapysm.webassembly import WebAssembly
-from wapysm.execute.context import WasmTable
+from wapysm.execute.utils import WASM_VALUE
+from wapysm.execute.context import WasmGlobalInstance, WasmTable
 from wapysm.execute.interpreter.invocation import wrap_function
 
 class TestRunWasmFile(unittest.TestCase):
@@ -20,5 +21,28 @@ class TestRunWasmFile(unittest.TestCase):
         print(exp_table.elem)
         elem_0 = wrap_function(exp_table.elem[0], wasm.module.store, ['i32'])
         elem_1 = wrap_function(exp_table.elem[1], wasm.module.store, ['i32'])
-        print(elem_0())
-        print(elem_1())
+        self.assertEqual(cast(WASM_VALUE, elem_0())[2], 13)
+        self.assertEqual(cast(WASM_VALUE, elem_1())[2], 42)
+
+    def test_global(self):
+        wasm_bin = requests.get('https://github.com/mdn/webassembly-examples/raw/master/js-api-examples/global.wasm').content
+        global_ = WasmGlobalInstance()
+        global_.value = ('i', 32, 0)
+        global_.mut = True
+        wasm = WebAssembly.instantiate(wasm_bin, {
+            'js': {
+                'global': global_,
+            },
+        })
+
+        print(wasm.exports)
+        self.assertEqual(cast(WASM_VALUE, wasm.exports['getGlobal']())[2], 0)
+
+        global_.value = ('i', 32, 42)
+        self.assertEqual(cast(WASM_VALUE, wasm.exports['getGlobal']())[2], 42)
+
+        wasm.exports['incGlobal']()
+        self.assertEqual(cast(WASM_VALUE, wasm.exports['getGlobal']())[2], 43)
+
+        wasm.exports['incGlobal']()
+        self.assertEqual(cast(WASM_VALUE, wasm.exports['getGlobal']())[2], 44)

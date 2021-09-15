@@ -1,7 +1,7 @@
 # flake8: noqa: E704,E701,E222
 
 from math import copysign, floor, isinf, isnan, sqrt
-from typing import Tuple, Union, cast
+from typing import Any, Dict, Tuple, Union, cast
 from ..parser.structure import VALTYPE_TYPE
 from ..opcode.numeric_generated import INT_OR_FLOAT, VALID_BITS
 from ..opcode import InstructionBase
@@ -17,6 +17,9 @@ class WasmTrappedException(Exception):
 
 def trap(op, *operands):
     raise WasmTrappedException('trapped: %s' % repr(op), op, *operands)
+
+def lenlen(dct: Dict[Any, Dict[Any, Any]]) -> int:
+    return sum(len(v) for _, v in dct.items())
 
 def clamp(tp: INT_OR_FLOAT, bits: VALID_BITS, value: Union[int, float]) -> WASM_VALUE:
     " Fixes value to its correct size "

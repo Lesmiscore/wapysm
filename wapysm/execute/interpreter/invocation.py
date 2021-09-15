@@ -1,14 +1,13 @@
 import itertools
-from typing import List, Optional, Union
+from typing import List, Optional, Union, cast
 
-from ...parser.structure import VALTYPE_TYPE
 from ...execute.utils import WASM_VALUE, typeof
 from ...execute.context import (
     WasmFunctionInstance,
     WasmStore, WasmModule)
 from .runner import invoke_wasm_function
 
-def invoke_function_external(funcaddr_or_func: Union[int, WasmFunctionInstance], store: WasmStore, rettype: List[VALTYPE_TYPE], exec_args: List[WASM_VALUE]) -> Optional[WASM_VALUE]:
+def invoke_function_external(funcaddr_or_func: Union[int, WasmFunctionInstance], store: WasmStore, exec_args: List[WASM_VALUE]) -> Optional[WASM_VALUE]:
     if isinstance(funcaddr_or_func, int):
         funcinst: WasmFunctionInstance = store.funcs[funcaddr_or_func]
     else:
@@ -22,14 +21,11 @@ def invoke_function_external(funcaddr_or_func: Union[int, WasmFunctionInstance],
     dummy_mod = WasmModule()
     dummy_mod.store = store
     stack: List[WASM_VALUE] = []
-    invoke_wasm_function(funcinst, dummy_mod, store, rettype, stack)
+    invoke_wasm_function(funcinst, dummy_mod, store, functype.return_types, stack)
     return stack[0] if stack else None
 
 
-def wrap_function(f: WasmFunctionInstance, store: WasmStore, rettype: List[VALTYPE_TYPE] = None):
-    if not rettype:
-        rettype = []
-
+def wrap_function(f: WasmFunctionInstance, store: WasmStore):
     def exec(*args):
         args_converted: List[WASM_VALUE] = []
         for a in args:
@@ -37,7 +33,9 @@ def wrap_function(f: WasmFunctionInstance, store: WasmStore, rettype: List[VALTY
                 args_converted.append(('i', 32, a))
             elif isinstance(a, float):
                 args_converted.append(('f', 32, a))
+            elif isinstance(a, tuple):
+                args_converted.append(cast(WASM_VALUE, a))
             else:
                 args_converted.append(('i', 32, -1))
-        return invoke_function_external(f, store, rettype, args_converted)
+        return invoke_function_external(f, store, args_converted)
     return exec

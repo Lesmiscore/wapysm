@@ -18,18 +18,18 @@ class WebAssembly:
         self.raw_module = parsed_module
 
         # filter only functions
-        self.exports = {k: wrap_function(v.value, wmod.store) for k, v in wmod.exports.items() if isinstance(v.value, WasmFunctionInstance)}
+        self.exports = {v.name: wrap_function(v.value, wmod.store) for k, v in wmod.exports.items() if isinstance(v.value, WasmFunctionInstance)}
 
 
     @staticmethod
-    def instantiate(buffer_source: Union[bytearray, bytes], import_object: Dict[str, WASM_EXPORT_OBJECT]) -> 'WebAssembly':
+    def instantiate(buffer_source: Union[bytearray, bytes], import_object: Dict[str, Dict[str, WASM_EXPORT_OBJECT]]) -> 'WebAssembly':
         """
         https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiate
         """
         return WebAssembly.instantiate_streaming(BytesIO(buffer_source), import_object)
 
     @staticmethod
-    def instantiate_streaming(source: IO[bytes], import_object: Dict[str, WASM_EXPORT_OBJECT]) -> 'WebAssembly':
+    def instantiate_streaming(source: IO[bytes], import_object: Dict[str, Dict[str, WASM_EXPORT_OBJECT]]) -> 'WebAssembly':
         """
         https://developer.mozilla.org/ja/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
         """
