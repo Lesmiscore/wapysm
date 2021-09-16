@@ -1,4 +1,4 @@
-from typing import Callable, Dict, List, Optional, cast
+from typing import Callable, Dict, List, Optional, Union, cast
 from ..execute.utils import WASM_VALUE, lenlen, trap
 from ..execute.interpreter.runner import interpret_wasm_section, invoke_wasm_function
 from ..execute.context import WASM_EXPORT_OBJECT, WASM_HOST_FUNC, WasmGlobalInstance, WasmHostFunctionInstance, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
@@ -14,7 +14,6 @@ def _next_addr(module: WasmModule) -> int:
 
 
 def allocate_function(
-    # FIXME: absolutely wrong code
     module: WasmModule,
     functype: WasmFunctionType,
     typeidx: int,
@@ -33,14 +32,16 @@ def allocate_function(
 
 
 def allocate_host_function(
-    # FIXME: absolutely wrong code
     module: WasmModule,
-    code: WASM_HOST_FUNC,
+    code: Union[WASM_HOST_FUNC, WasmFunctionInstance],
 ) -> int:
     funcaddr = _next_addr(module)
-    localfunc = WasmHostFunctionInstance()
-    localfunc.hostfunc = code
-    localfunc.functype = WasmType([], ['i32'], code.code.expr)
+    if isinstance(code, WasmFunctionInstance):
+        localfunc = code
+    else:
+        localfunc = WasmHostFunctionInstance()
+        localfunc.hostfunc = code
+        localfunc.functype = WasmType([], ['i32'], code.code.expr)
     module.funcaddrs[len(module.funcaddrs)] = funcaddr
     module.store.funcs[funcaddr] = localfunc
     return funcaddr
@@ -120,6 +121,7 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, Dict[s
     for sec in parsed.sections:
         sections[sec.section_id].append(sec.section_content)
     types: List[WasmFunctionType] = [x for y in sections[1] for x in cast(List[WasmFunctionType], y)]
+    impts: List[WasmImport] = [x for y in sections[2] for x in cast(List[WasmImport], y)]  # noqa: F841
     funcs: List[int] = [x for y in sections[3] for x in cast(List[int], y)]
     tabls: List[WasmTableType] = [x for y in sections[4] for x in cast(List[WasmTableType], y)]
     memrs: List[WasmLimits] = [x for y in sections[5] for x in cast(List[WasmLimits], y)]
@@ -129,6 +131,7 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, Dict[s
 
     # assert len(types) == len(funcs)
     assert len(funcs) == len(codes)
+    assert len(impts) == lenlen(externval)
 
     ret_module = WasmModule()
     ret_module.store = WasmStore()
@@ -138,9 +141,12 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, Dict[s
     mem_addrs = []
     global_addrs = []
     # allocate imported objects
-    for _, _, v in sorted((k1, k2, v) for k1, sm in externval.items() for k2, v in sm.items()):
+    for imp in impts:
+        v = externval[imp.module][imp.name]
         if isinstance(v, Callable):
             func_addrs.append(allocate_host_function(ret_module, cast(WASM_HOST_FUNC, v)))
+        elif isinstance(v, WasmFunctionInstance):
+            func_addrs.append(allocate_host_function(ret_module, v))
         elif isinstance(v, WasmTable):
             table_addrs.append(allocate_external_table(ret_module, v))
         elif isinstance(v, WasmMemoryInstance):
@@ -189,12 +195,9 @@ def instantiate_wasm_module(module: WasmModule, parsed: WasmParsedModule, extern
         sections[s] = []
     for sec in parsed.sections:
         sections[sec.section_id].append(sec.section_content)
-    impts: List[WasmImport] = [x for y in sections[2] for x in cast(List[WasmImport], y)]  # noqa: F841
     strts: Optional[int] = cast(int, next(iter(sections[8]), None))  # noqa: F841
     elems: List[WasmElemUnresolved] = [x for y in sections[9] for x in cast(List[WasmElemUnresolved], y)]  # noqa: F841
     datum: List[WasmData] = [x for y in sections[11] for x in cast(List[WasmData], y)]  # noqa: F841
-
-    assert len(impts) == lenlen(externval)
 
     # 4. ?
     for addr, exp in module.exports.items():
