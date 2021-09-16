@@ -22,7 +22,8 @@ from ...execute.utils import (
     wasm_ilt_signed, wasm_ilt_unsigned, wasm_imul,
     wasm_ine, wasm_ipopcnt, wasm_irem_signed,
     wasm_irotl, wasm_irotr, wasm_ishl,
-    wasm_ishr_signed, wasm_ishr_unsigned, wasm_isub)
+    wasm_ishr_signed, wasm_ishr_unsigned, wasm_isub,
+    zero_from_type)
 from ...opcode import (
     Block, BlockInstructionBase, Br, BrIf, BrTable, Call,
     CallIndirect, DropInstruction, GlobalGetInstruction,
@@ -189,13 +190,20 @@ CVTOP_FUNC: Dict[
     F64Reinterpret_i64: lambda a: struct.unpack('<d', struct.pack('<L', a))[0],
 }
 
-def invoke_wasm_function(f: WasmFunctionInstance, module: WasmModule, store: WasmStore, rettype: List[VALTYPE_TYPE], stack: List[WASM_VALUE]):
+def invoke_wasm_function(f: WasmFunctionInstance, module: WasmModule, store: WasmStore, rettype: List[VALTYPE_TYPE], stack: List[WASM_VALUE], args: List[WASM_VALUE]):
     if isinstance(f, WasmLocalFunctionInstance):
-        ret, _ = interpret_wasm_section(f.wf.body, f.module, store, {}, rettype)
+        locals: Dict[int, WASM_VALUE] = {}
+        for i, v in enumerate(args):
+            locals[i] = v
+        for n, tp in f.wf.locals:
+            for _ in range(n):
+                locals[len(locals)] = zero_from_type(tp)
+        ret, _ = interpret_wasm_section(f.wf.body, f.module, store, locals, rettype)
         if ret:
             stack.append(ret)
     elif isinstance(f, WasmHostFunctionInstance):
         # Host Functions
+        locals: Dict[int, WASM_VALUE] = {}
         ret = f.hostfunc(store, module, locals)  # type: ignore
         if isinstance(ret, int):
             ret = ('i', 32, ret)
@@ -241,6 +249,7 @@ def interpret_wasm_section(
 
     # don't store len(code)
     while idx <= len(code) or is_loop:
+        print(is_loop, idx, len(code))
         if idx == len(code):
             if is_loop:
                 idx = 0
@@ -259,6 +268,7 @@ def interpret_wasm_section(
                 # went out of code bounds, but no label to back
                 break
         op = code[idx]
+        print(op)
         idx += 1
 
         # Control Instructions
@@ -328,8 +338,10 @@ def interpret_wasm_section(
             lbl = op.labelidx
             oldstack = list(stack)
             oldrt = resulttype
-            cont = label_stack[-1]  # Unbound guard, meaningless
-            for i in range(lbl + 1):
+            cont = (
+                current_block, current_label, list(code), idx, list(stack), is_loop, resulttype,
+            )
+            for i in range(lbl):
                 cont = label_stack.pop()
             # set "registers"
             current_block, current_label, code, idx, stack, is_loop, resulttype = cont
@@ -345,8 +357,10 @@ def interpret_wasm_section(
                 lbl = op.labelidx
                 oldstack = list(stack)
                 oldrt = resulttype
-                cont = label_stack[-1]  # Unbound guard, meaningless
-                for i in range(lbl + 1):
+                cont = (
+                    current_block, current_label, list(code), idx, list(stack), is_loop, resulttype,
+                )
+                for i in range(lbl):
                     cont = label_stack.pop()
                 # set "registers"
                 current_block, current_label, code, idx, stack, is_loop, resulttype = cont
@@ -363,8 +377,10 @@ def interpret_wasm_section(
             # find specified label
             oldstack = list(stack)
             oldrt = resulttype
-            cont = label_stack[-1]  # Unbound guard, meaningless
-            for i in range(lbl + 1):
+            cont = (
+                current_block, current_label, list(code), idx, list(stack), is_loop, resulttype,
+            )
+            for i in range(lbl):
                 cont = label_stack.pop()
             # set "registers"
             current_block, current_label, code, idx, stack, is_loop, resulttype = cont
@@ -377,7 +393,7 @@ def interpret_wasm_section(
             break
         elif isinstance(op, Call):
             f = store.funcs[module.funcaddrs[op.callidx]]
-            invoke_wasm_function(f, module, store, f.functype.return_types, stack)
+            invoke_wasm_function(f, module, store, f.functype.return_types, stack, [])
         elif isinstance(op, CallIndirect):
             tab = store.tables[module.tableaddrs[0]]
             ft_expect = module.types[op.typeidx]
@@ -391,7 +407,7 @@ def interpret_wasm_section(
             if ft_expect != ft_actual:
                 trap('type signature mismatch')
 
-            invoke_wasm_function(f, module, store, ft_actual.return_types, stack)
+            invoke_wasm_function(f, module, store, ft_actual.return_types, stack, [])
 
         # Constant Instruction
         elif isinstance(op, ConstantInstructionBase):

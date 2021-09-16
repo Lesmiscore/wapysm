@@ -13,7 +13,7 @@ class WasmType(WasmFunctionType):
 
 class WasmFunction():
     "2.5.3 Functions"
-    def __init__(self, wasm_mod: 'WasmModule', typeidx: int, locals: List[VALTYPE_TYPE], body: List[InstructionBase]) -> None:
+    def __init__(self, wasm_mod: 'WasmModule', typeidx: int, locals: List[Tuple[int, VALTYPE_TYPE]], body: List[InstructionBase]) -> None:
         self.wasm_mod = wasm_mod
         self.typeidx = typeidx
         self.locals = locals
@@ -21,7 +21,7 @@ class WasmFunction():
 
     # module: WasmModule
     typeidx: int
-    locals: List[VALTYPE_TYPE]
+    locals: List[Tuple[int, VALTYPE_TYPE]]
     body: List[InstructionBase]
 
 class WasmTable(WasmTableType):

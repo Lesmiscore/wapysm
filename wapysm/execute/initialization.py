@@ -2,7 +2,7 @@ from typing import Callable, Dict, List, Optional, cast
 from ..execute.utils import WASM_VALUE, lenlen, trap
 from ..execute.interpreter.runner import interpret_wasm_section, invoke_wasm_function
 from ..execute.context import WASM_EXPORT_OBJECT, WASM_HOST_FUNC, WasmGlobalInstance, WasmHostFunctionInstance, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
-from ..parser.structure import VALTYPE_TYPE, WasmFunctionType, WasmLimits, WasmTableType
+from ..parser.structure import WasmFunctionType, WasmLimits, WasmTableType
 from .context import WASM_PAGE_SIZE, WASM_SECTION_TYPE, WasmCodeSection, WasmData, WasmElemUnresolved, WasmExport, WasmExportValue, WasmFunction, WasmFunctionInstance, WasmGlobalSection, WasmImport, WasmModule, WasmParsedModule, WasmTable, WasmType
 
 
@@ -21,8 +21,7 @@ def allocate_function(
     code: WasmCodeSection,
 ) -> int:
     funcaddr = _next_addr(module)
-    locals = cast(List[VALTYPE_TYPE], [x[1] for x in sorted(code.code.code_locals)])
-    wf = WasmFunction(module, typeidx, locals, code.code.expr)
+    wf = WasmFunction(module, typeidx, code.code.code_locals, code.code.expr)
     localfunc = WasmLocalFunctionInstance()
     localfunc.module = module
     localfunc.wf = wf
@@ -257,4 +256,4 @@ def instantiate_wasm_module(module: WasmModule, parsed: WasmParsedModule, extern
         # start section itself is funcaddr for now
         funcaddr = module.funcaddrs[strts]
         func = module.store.funcs[funcaddr]
-        invoke_wasm_function(func, module, module.store, [], [])
+        invoke_wasm_function(func, module, module.store, [], [], [])

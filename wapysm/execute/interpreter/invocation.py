@@ -21,7 +21,7 @@ def invoke_function_external(funcaddr_or_func: Union[int, WasmFunctionInstance],
     dummy_mod = WasmModule()
     dummy_mod.store = store
     stack: List[WASM_VALUE] = []
-    invoke_wasm_function(funcinst, dummy_mod, store, functype.return_types, stack)
+    invoke_wasm_function(funcinst, dummy_mod, store, functype.return_types, stack, exec_args)
     return stack[0] if stack else None
 
 

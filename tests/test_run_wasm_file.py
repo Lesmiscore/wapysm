@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from wapysm.webassembly import WebAssembly
 from wapysm.execute.utils import WASM_VALUE
-from wapysm.execute.context import WasmGlobalInstance, WasmTable
+from wapysm.execute.context import WasmGlobalInstance, WasmMemoryInstance, WasmTable
 from wapysm.execute.interpreter.invocation import wrap_function
 
 class TestRunWasmFile(unittest.TestCase):
@@ -57,3 +57,15 @@ class TestRunWasmFile(unittest.TestCase):
         elem_1 = wrap_function(exp_table.elem[1], wasm.module.store)
         self.assertEqual(cast(WASM_VALUE, elem_0())[2], 13)
         self.assertEqual(cast(WASM_VALUE, elem_1())[2], 42)
+
+    def test_memory(self):
+        wasm_bin = requests.get('https://github.com/mdn/webassembly-examples/raw/master/js-api-examples/memory.wasm').content
+        mem = WasmMemoryInstance(1, 1)
+        wasm = WebAssembly.instantiate(wasm_bin, {
+            'js': {
+                'mem': mem,
+            }
+        })
+        for i in range(10):
+            mem[i * 4] = i
+        self.assertEqual(wasm.exports['accumulate'](0, 10), ('i', 32, 45))
