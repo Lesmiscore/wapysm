@@ -204,7 +204,7 @@ def invoke_wasm_function(f: WasmFunctionInstance, module: WasmModule, store: Was
     elif isinstance(f, WasmHostFunctionInstance):
         # Host Functions
         locals: Dict[int, WASM_VALUE] = {}
-        ret = f.hostfunc(store, module, locals)  # type: ignore
+        ret = f.hostfunc(store, module, locals, args)  # type: ignore
         if isinstance(ret, int):
             ret = ('i', 32, ret)
         elif isinstance(ret, float):
@@ -468,23 +468,19 @@ def interpret_wasm_section(
         # 4.4.4. Memory Instructions
         elif isinstance(op, MemorySize):
             mem = store.mems[module.memaddrs[0]]
-            sz = len(mem.pages)
+            sz = len(mem) // WASM_PAGE_SIZE
             stack.append(('i', 32, sz))
         elif isinstance(op, MemoryGrow):
             mem = store.mems[module.memaddrs[0]]
             operand_c1 = stack.pop()
             length_to_extend = floor(operand_c1[2])
-            array = []
             try:
-                sz = len(mem.pages)
+                sz = len(mem) // WASM_PAGE_SIZE
                 if mem.maximum and (sz + length_to_extend) > mem.maximum:
-                    raise Exception(f'Memory cannot grow past {mem.maximum} pages')
-                for _ in range(length_to_extend):
-                    array.append(bytearray(WASM_PAGE_SIZE))
-                mem.pages.extend(array)
+                    raise Exception(f'Memory cannot grow {mem.maximum} pages')
+                mem.data += bytearray(length_to_extend * WASM_PAGE_SIZE)
                 retval = sz
             except BaseException:
-                array.clear()
                 retval = -1
             stack.append(('i', 32, retval))
         elif isinstance(op, MemoryLoadStoreInstructionBase) and op.op.startswith('load'):

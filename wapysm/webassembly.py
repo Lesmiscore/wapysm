@@ -18,7 +18,7 @@ class WebAssembly:
         self.raw_module = parsed_module
 
         # filter only functions
-        self.exports = {v.name: wrap_function(v.value, wmod.store) for k, v in wmod.exports.items() if isinstance(v.value, WasmFunctionInstance)}
+        self.exports = {k: wrap_function(v, wmod.store) for k, v in wmod.named_exports.items() if isinstance(v, WasmFunctionInstance)}
 
 
     @staticmethod

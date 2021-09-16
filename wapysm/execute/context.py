@@ -1,3 +1,5 @@
+import struct
+
 from typing import Callable, Dict, List, Optional, Union, Literal, Tuple
 from ..execute.utils import WASM_VALUE, trap
 from ..parser.structure import WasmFunctionType, WasmLimits, VALTYPE_TYPE, WasmGlobalType, WasmTableType
@@ -173,9 +175,14 @@ class WasmModule():
 
     store: 'WasmStore'
 
+    @property
+    def named_exports(self) -> Dict[str, 'WASM_EXPORT_RESOLVED']:
+        return {a.name: a.value for _, a in self.exports.items()}
 
 
-WASM_HOST_FUNC = Callable[['WasmStore', WasmModule, Dict[int, WASM_VALUE]], int]
+
+# store, module, locals, arguments
+WASM_HOST_FUNC = Callable[['WasmStore', WasmModule, Dict[int, WASM_VALUE], List[WASM_VALUE]], Optional[WASM_VALUE]]
 
 class WasmFunctionInstance():
     " 4.2.6 Function Instances "
@@ -202,38 +209,49 @@ class WasmMemory(WasmLimits):
 class WasmMemoryInstance(WasmMemory):
     " 4.2.8 Memory Instances "
     pages: List[bytearray]
+    data: bytearray
     maximum: Optional[int]
 
     def __init__(self, minimum: int, maximum: Optional[int]) -> None:
         super().__init__(minimum, maximum)
-        self.pages = []
-        for _ in range(minimum):
-            self.pages.append(bytearray(WASM_PAGE_SIZE))
+        self.data = bytearray(minimum * WASM_PAGE_SIZE)
 
     def __len__(self):
-        return len(self.pages) * WASM_PAGE_SIZE
+        return len(self.data) * WASM_PAGE_SIZE
 
     def __getitem__(self, key: int) -> int:
-        begin_index, begin_offset = divmod(key, WASM_PAGE_SIZE)
-        return self.pages[begin_index][begin_offset]
+        return self.data[key]
 
     def __setitem__(self, key: int, value: int):
-        begin_index, begin_offset = divmod(key, WASM_PAGE_SIZE)
-        self.pages[begin_index][begin_offset] = value
+        self.data[key] = value
 
     def trim(self, begin: int, length: int) -> bytearray:
-        begin_index, begin_offset = divmod(begin, WASM_PAGE_SIZE)
-        end_index, end_offset = divmod(begin + length, WASM_PAGE_SIZE)
-        if end_offset == 0:
-            end_offset = WASM_PAGE_SIZE
-            end_index = end_index - 1
+        return self.data[begin:begin + length]
 
-        if begin_index == end_index:
-            # not spans page
-            return self.pages[begin_index][begin_offset:end_offset]
-        else:
-            # spans page
-            return self.pages[begin_index][begin_offset:WASM_PAGE_SIZE] + self.pages[end_index][0:end_offset]
+    def set_int64(self, addr: int, v: int):
+        self.data[addr:addr + 8] = struct.pack('<L', v)
+
+    def get_int64(self, addr: int) -> int:
+        return struct.unpack('<L', self.trim(addr, 8))[0]
+
+    def set_int32(self, addr: int, v: int):
+        self.data[addr:addr + 4] = struct.pack('<I', v)
+
+    def get_int32(self, addr: int) -> int:
+        return struct.unpack('<I', self.trim(addr, 8))[0]
+
+
+    def set_float64(self, addr: int, v: float):
+        self.data[addr:addr + 8] = struct.pack('<d', v)
+
+    def get_float64(self, addr: int) -> float:
+        return struct.unpack('<d', self.trim(addr, 8))[0]
+
+    def set_float32(self, addr: int, v: float):
+        self.data[addr:addr + 4] = struct.pack('<f', v)
+
+    def get_float32(self, addr: int) -> float:
+        return struct.unpack('<f', self.trim(addr, 8))[0]
 
 
 class WasmGlobalInstance():
