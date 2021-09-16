@@ -1,9 +1,9 @@
 import io
-from typing import Optional
+from typing import IO, Optional
 
 
-class LimitedRawIO(io.RawIOBase):
-    def __init__(self, base: io.RawIOBase, length: int) -> None:
+class LimitedRawIO(io.RawIOBase, IO[bytes]):
+    def __init__(self, base: IO[bytes], length: int) -> None:
         super().__init__()
         self.base = base
         self.length = length
