@@ -243,13 +243,16 @@ def interpret_wasm_section(
     current_block: Optional[BlockInstructionBase] = None
     current_label = 0
     label_stack: List[WASM_LABEL_CONTINUATION] = []
-    # activation_stack: list = []
     is_loop: bool = False
     idx: int = 0
 
+    def continuation() -> WASM_LABEL_CONTINUATION:
+        return (
+            current_block, current_label, list(code), idx, list(stack), is_loop, resulttype,
+        )
+
     # don't store len(code)
     while idx <= len(code) or is_loop:
-        print(is_loop, idx, len(code))
         if idx == len(code):
             if is_loop:
                 idx = 0
@@ -268,7 +271,6 @@ def interpret_wasm_section(
                 # went out of code bounds, but no label to back
                 break
         op = code[idx]
-        print(op)
         idx += 1
 
         # Control Instructions
@@ -278,9 +280,7 @@ def interpret_wasm_section(
             trap(op)
         elif isinstance(op, Block):
             # save continuation
-            cont: WASM_LABEL_CONTINUATION = (
-                current_block, current_label, list(code), idx, list(stack), is_loop, resulttype,
-            )
+            cont: WASM_LABEL_CONTINUATION = continuation()
             label_stack.append(cont)
             # reset "registers"
             current_block = op
@@ -294,9 +294,7 @@ def interpret_wasm_section(
             continue
         elif isinstance(op, Loop):
             # save continuation
-            cont = (
-                current_block, current_label, list(code), idx, list(stack), is_loop, resulttype,
-            )
+            cont = continuation()
             label_stack.append(cont)
             # reset "registers"
             current_block = op
@@ -310,9 +308,7 @@ def interpret_wasm_section(
             continue
         elif isinstance(op, IfElse):
             # save continuation
-            cont = (
-                current_block, current_label, list(code), idx, list(stack), is_loop, resulttype,
-            )
+            cont = continuation()
             label_stack.append(cont)
 
             operand_c1: WASM_VALUE = stack.pop()
@@ -338,13 +334,12 @@ def interpret_wasm_section(
             lbl = op.labelidx
             oldstack = list(stack)
             oldrt = resulttype
-            cont = (
-                current_block, current_label, list(code), idx, list(stack), is_loop, resulttype,
-            )
+            cont = continuation()
             for i in range(lbl):
                 cont = label_stack.pop()
             # set "registers"
             current_block, current_label, code, idx, stack, is_loop, resulttype = cont
+            idx = len(code)
             if oldrt:
                 stack = stack + oldstack[-len(oldrt):]
             # jump!
@@ -357,13 +352,12 @@ def interpret_wasm_section(
                 lbl = op.labelidx
                 oldstack = list(stack)
                 oldrt = resulttype
-                cont = (
-                    current_block, current_label, list(code), idx, list(stack), is_loop, resulttype,
-                )
+                cont = continuation()
                 for i in range(lbl):
                     cont = label_stack.pop()
                 # set "registers"
                 current_block, current_label, code, idx, stack, is_loop, resulttype = cont
+                idx = len(code)
                 if oldrt:
                     stack = stack + oldstack[-len(oldrt):]
                 # jump!
@@ -377,13 +371,12 @@ def interpret_wasm_section(
             # find specified label
             oldstack = list(stack)
             oldrt = resulttype
-            cont = (
-                current_block, current_label, list(code), idx, list(stack), is_loop, resulttype,
-            )
+            cont = continuation()
             for i in range(lbl):
                 cont = label_stack.pop()
             # set "registers"
             current_block, current_label, code, idx, stack, is_loop, resulttype = cont
+            idx = len(code)
             if oldrt:
                 stack = stack + oldstack[-len(oldrt):]
             # jump!
