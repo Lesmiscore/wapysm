@@ -1,5 +1,5 @@
 from typing import Callable, Dict, List, Optional, Union, Literal, Tuple
-from ..execute.utils import WASM_VALUE
+from ..execute.utils import WASM_VALUE, trap
 from ..parser.structure import WasmFunctionType, WasmLimits, VALTYPE_TYPE, WasmGlobalType, WasmTableType
 from ..opcode import InstructionBase
 
@@ -36,6 +36,18 @@ class WasmTable(WasmTableType):
         self.max = lim.maximum
         self.elem_addrs = {}
         self.elem = {}
+        for i in range(lim.minimum):
+            self.elem_addrs[i] = -1
+
+    def __len__(self):
+        return len(self.elem_addrs)
+
+    def grow(self, num: int):
+        lim = self.lim
+        if lim.maximum is not None and lim.minimum + num > lim.maximum:
+            trap(f'lim.minimum + num > lim.maximum ({lim.minimum} + {num} > {lim.maximum}) where lim.maximum != None')
+        for i in range(num):
+            self.elem_addrs[lim.minimum + i] = -1
 
 class WasmGlobal():
     "2.5.6 Globals"

@@ -10,6 +10,7 @@ from wapysm.webassembly import WebAssembly
 from wapysm.execute.utils import WASM_VALUE
 from wapysm.execute.context import WasmGlobalInstance, WasmMemoryInstance, WasmTable
 from wapysm.execute.interpreter.invocation import wrap_function
+from wapysm.parser.structure import WasmLimits
 
 class TestRunWasmFile(unittest.TestCase):
 
@@ -57,6 +58,21 @@ class TestRunWasmFile(unittest.TestCase):
         elem_1 = wrap_function(exp_table.elem[1], wasm.module.store)
         self.assertEqual(cast(WASM_VALUE, elem_0())[2], 13)
         self.assertEqual(cast(WASM_VALUE, elem_1())[2], 42)
+
+    def test_table2(self):
+        wasm_bin = requests.get('https://github.com/mdn/webassembly-examples/raw/master/js-api-examples/table2.wasm').content
+        tbl = WasmTable(0, WasmLimits(2, None))
+        wasm = WebAssembly.instantiate(wasm_bin, {
+            'js': {
+                'tbl': tbl,
+            }
+        })
+
+        self.assertEqual(len(tbl), 2)
+        elem_0 = wrap_function(tbl.elem[0], wasm.module.store)
+        elem_1 = wrap_function(tbl.elem[1], wasm.module.store)
+        self.assertEqual(cast(WASM_VALUE, elem_0())[2], 42)
+        self.assertEqual(cast(WASM_VALUE, elem_1())[2], 83)
 
     def test_memory(self):
         wasm_bin = requests.get('https://github.com/mdn/webassembly-examples/raw/master/js-api-examples/memory.wasm').content
