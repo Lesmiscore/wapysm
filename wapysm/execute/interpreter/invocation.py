@@ -1,8 +1,8 @@
 import itertools
 from typing import List, Optional, Union, cast
 
-from ...execute.utils import WASM_VALUE, typeof
-from ...execute.context import (
+from ..utils import WASM_VALUE, typeof
+from ..context import (
     WasmFunctionInstance,
     WasmStore, WasmModule)
 from .runner import invoke_wasm_function

@@ -7,7 +7,7 @@ import sys
 import time
 
 from math import isnan
-from typing import Callable, Dict, List, cast
+from typing import Callable, Dict, List, Sized, cast
 from .utils import reflect_delete_prop, reflect_get, reflect_set
 from ..execute.interpreter.invocation import wrap_function
 from ..execute.utils import WASM_VALUE
@@ -100,6 +100,11 @@ class Go():
             length = self.mem.get_int64(addr + 8)
             return self.mem.trim(begin, length).decode()
 
+        def getsp() -> int:
+            sp_raw = wrap_function(cast(WasmFunctionInstance, self._inst.named_exports['getsp']), self._inst.store)()
+            assert sp_raw
+            return int(sp_raw[2])
+
         def _golangimport_runtime_wasmexit(ws: WasmStore, wm: WasmModule, lc: Dict[int, WASM_VALUE], args: List[WASM_VALUE]):
             sp = int(args[0][2])
             code = self.mem.get_int32(sp + 8)
@@ -175,9 +180,7 @@ class Go():
         def _golangimport_syscall_js_valueget(ws: WasmStore, wm: WasmModule, lc: Dict[int, WASM_VALUE], args: List[WASM_VALUE]):
             sp = int(args[0][2])
             result = reflect_get(load_value(sp + 8), load_string(sp + 16))
-            sp_raw = wrap_function(cast(WasmFunctionInstance, self._inst.named_exports['getsp']), self._inst.store)()
-            assert sp_raw
-            sp = int(sp_raw[2])
+            sp = getsp()
             store_value(sp + 32, result)
 
         def _golangimport_syscall_js_valueset(ws: WasmStore, wm: WasmModule, lc: Dict[int, WASM_VALUE], args: List[WASM_VALUE]):
@@ -196,7 +199,94 @@ class Go():
             sp = int(args[0][2])
             reflect_set(load_value(sp + 8), self.mem.get_int64(sp + 16), load_value(sp + 24))
 
-        # imcomplete
+        def _golangimport_syscall_js_valuecall(ws: WasmStore, wm: WasmModule, lc: Dict[int, WASM_VALUE], args: List[WASM_VALUE]):
+            sp = int(args[0][2])
+            try:
+                v = load_value(sp + 8)
+                m = reflect_get(v, load_string(sp + 16))
+                args_ = load_slice_of_values(sp + 32)
+                if isinstance(m, WasmFunctionInstance):
+                    m = wrap_function(m, ws)
+                if isinstance(m, Callable):
+                    result = m(*args_)
+                else:
+                    raise Exception('Cannot call the function')
+
+                sp = getsp()
+
+                store_value(sp + 56, result)
+                self.mem[sp + 64] = 1
+            except BaseException as ex:
+                sp = getsp()
+
+                store_value(sp + 56, ex)
+                self.mem[sp + 64] = 1
+
+        # no code modification for "syscall/js.valueNew"
+        def _golangimport_syscall_js_valueinvoke(ws: WasmStore, wm: WasmModule, lc: Dict[int, WASM_VALUE], args: List[WASM_VALUE]):
+            sp = int(args[0][2])
+            try:
+                v = load_value(sp + 8)
+                args_ = load_slice_of_values(sp + 16)
+                if isinstance(v, WasmFunctionInstance):
+                    v = wrap_function(v, ws)
+                if isinstance(v, Callable):
+                    result = v(*args_)
+                else:
+                    raise Exception('Cannot call the function')
+                sp = getsp()
+                store_value(sp + 40, result)
+                self.mem[sp + 48] = 1
+            except BaseException as ex:
+                sp = getsp()
+                store_value(sp + 40, ex)
+                self.mem[sp + 48] = 1
+
+        def _golangimport_syscall_js_valuelength(ws: WasmStore, wm: WasmModule, lc: Dict[int, WASM_VALUE], args: List[WASM_VALUE]):
+            sp = int(args[0][2])
+            self.mem.set_int64(sp + 16, len(cast(Sized, load_value(sp + 8))))
+
+        def _golangimport_syscall_js_valuepreparestring(ws: WasmStore, wm: WasmModule, lc: Dict[int, WASM_VALUE], args: List[WASM_VALUE]):
+            sp = int(args[0][2])
+            string = str(load_value(sp + 8)).encode('utf-8')
+            store_value(sp + 16, string)
+            self.mem.set_int64(sp + 24, len(string))
+
+        def _golangimport_syscall_js_valueloadstring(ws: WasmStore, wm: WasmModule, lc: Dict[int, WASM_VALUE], args: List[WASM_VALUE]):
+            sp = int(args[0][2])
+            string = load_value(sp + 8)
+            load_slice(sp + 16)[:] = cast(bytes, string)
+
+        def _golangimport_syscall_js_valueinstanceof(ws: WasmStore, wm: WasmModule, lc: Dict[int, WASM_VALUE], args: List[WASM_VALUE]):
+            sp = int(args[0][2])
+            self.mem[sp + 24] = 1 if isinstance(load_value(sp + 8), cast(type, load_value(sp + 16))) else 0
+
+        def _golangimport_syscall_js_copybytestogo(ws: WasmStore, wm: WasmModule, lc: Dict[int, WASM_VALUE], args: List[WASM_VALUE]):
+            sp = int(args[0][2])
+            dst = load_slice(sp + 8)
+            src = load_value(sp + 32)
+            if not isinstance(src, (bytes, bytearray)):
+                self.mem[sp + 48] = 0
+                return
+            copy_length = min(len(dst), len(src))
+            dst[:copy_length] = src[:copy_length]
+            self.mem.set_int64(sp + 40, copy_length)
+            self.mem[sp + 48] = 1
+
+        def _golangimport_syscall_js_copybytestojs(ws: WasmStore, wm: WasmModule, lc: Dict[int, WASM_VALUE], args: List[WASM_VALUE]):
+            sp = int(args[0][2])
+            dst = load_value(sp + 8)
+            src = load_slice(sp + 16)
+            if not isinstance(dst, bytearray):
+                self.mem[sp + 48] = 0
+                return
+            copy_length = min(len(dst), len(src))
+            dst[:copy_length] = src[:copy_length]
+            self.mem.set_int64(sp + 40, copy_length)
+            self.mem[sp + 48] = 1
+
+        def _golangimport_debug(ws: WasmStore, wm: WasmModule, lc: Dict[int, WASM_VALUE], args: List[WASM_VALUE]):
+            print(args[0])
 
         self.import_object = {
             'go': {
@@ -215,10 +305,23 @@ class Go():
                 'syscall/js.valueDelete': _golangimport_syscall_js_valuedelete,
                 'syscall/js.valueIndex': _golangimport_syscall_js_valueindex,
                 'syscall/js.valueSetIndex': _golangimport_syscall_js_valuesetindex,
+                'syscall/js.valueCall': _golangimport_syscall_js_valuecall,
+                'syscall/js.valueInvoke': _golangimport_syscall_js_valueinvoke,
+                'syscall/js.valueNew': _golangimport_syscall_js_valueinvoke,
+                'syscall/js.valueLength': _golangimport_syscall_js_valuelength,
+                'syscall/js.valuePrepareString': _golangimport_syscall_js_valuepreparestring,
+                'syscall/js.valueLoadString': _golangimport_syscall_js_valueloadstring,
+                'syscall/js.valueInstanceOf': _golangimport_syscall_js_valueinstanceof,
+                'syscall/js.copyBytesToGo': _golangimport_syscall_js_copybytestogo,
+                'syscall/js.copyBytesToJS': _golangimport_syscall_js_copybytestojs,
+                'debug': _golangimport_debug,
             }
         }
 
-    def exit(self, code):
+    def run(self, instance: WasmModule):
+        pass
+
+    def exit(self, code: int):
         if code != 0:
             print('exit code:', code)
 
