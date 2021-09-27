@@ -11,13 +11,14 @@ A Python-native WASM interpreter.
 - [ ] Write some wrappers for both Golang and Emscripten (outside WASM specs)
 
 # Installation
-WIP
+
+```bash
+pip install git+https://github.com/nao20010128nao/wapysm
+```
 
 # Usage
-WIP
+WIP, see `example/` for time being
 
-# Building
-WIP
 
 # Note about this project
 This project is developed as a part of [SecHack365](https://sechack365.nict.go.jp/)'21 program.
