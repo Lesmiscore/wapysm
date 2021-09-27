@@ -10,7 +10,7 @@ from ...execute.context import (
     WasmLocalFunctionInstance,
     WasmStore, WasmModule)
 from ...execute.utils import (
-    WASM_VALUE, clamp, clamp_32bit, clamp_64bit,
+    WASM_VALUE, clamp, clamp_32bit, clamp_64bit, clamp_anybit,
     trap, unclamp_32bit, unclamp_64bit,
     wasm_fnearest, wasm_fsqrt,
     wasm_i32_signed_to_i64, wasm_i32_unsigned_to_i64,
@@ -185,9 +185,9 @@ CVTOP_FUNC: Dict[
     F64Convert_i64_s: lambda a: float(unclamp_64bit(a)),
 
     I32Reinterpret_f32: lambda a: struct.unpack('<I', struct.pack('<f', a))[0],
-    I64Reinterpret_f64: lambda a: struct.unpack('<L', struct.pack('<d', a))[0],
+    I64Reinterpret_f64: lambda a: struct.unpack('<Q', struct.pack('<d', a))[0],
     F32Reinterpret_i32: lambda a: struct.unpack('<f', struct.pack('<I', a))[0],
-    F64Reinterpret_i64: lambda a: struct.unpack('<d', struct.pack('<L', a))[0],
+    F64Reinterpret_i64: lambda a: struct.unpack('<d', struct.pack('<Q', a))[0],
 }
 
 def invoke_wasm_function(f: WasmFunctionInstance, module: WasmModule, store: WasmStore, rettype: List[VALTYPE_TYPE], stack: List[WASM_VALUE], args: List[WASM_VALUE]):
@@ -507,7 +507,7 @@ def interpret_wasm_section(
                     if op.bits == 32:
                         pack_arg = '<I'
                     else:
-                        pack_arg = '<L'
+                        pack_arg = '<Q'
                 else:
                     if op.bits == 32:
                         pack_arg = '<f'
@@ -519,7 +519,7 @@ def interpret_wasm_section(
                 if N == 32:
                     pack_arg = '<I'
                 else:
-                    pack_arg = '<L'
+                    pack_arg = '<Q'
                 if op.op.endswith('_s'):
                     pack_arg = pack_arg.lower()
                 value = struct.unpack(pack_arg, b_star)[0]
@@ -549,7 +549,8 @@ def interpret_wasm_section(
                     if op.bits == 32:
                         pack_arg = '<I'
                     else:
-                        pack_arg = '<L'
+                        pack_arg = '<Q'
+                    operand_c_value = clamp_anybit(operand_c_value, op.bits)
                 else:
                     if op.bits == 32:
                         pack_arg = '<f'
@@ -560,7 +561,8 @@ def interpret_wasm_section(
                 if N == 32:
                     pack_arg = '<I'
                 else:
-                    pack_arg = '<L'
+                    pack_arg = '<Q'
+                operand_c_value = clamp_anybit(operand_c_value, N)
             b_star_ = struct.pack(pack_arg, operand_c_value)
             for i, bb in enumerate(b_star_):
                 mem[ea + i] = bb

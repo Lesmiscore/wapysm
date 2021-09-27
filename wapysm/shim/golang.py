@@ -8,6 +8,7 @@ import time
 
 from math import isnan
 from typing import Callable, Dict, List, Sized, cast
+
 from .utils import reflect_delete_prop, reflect_get, reflect_set
 from ..execute.interpreter.invocation import wrap_function
 from ..execute.utils import WASM_VALUE
@@ -27,6 +28,10 @@ class Go():
     def __init__(self) -> None:
         self.argv = ('js',)
         self.env = {}
+        self._global = {
+            'Object': dict,
+            'Number': float,
+        }
         # exit
         self._pending_event = None
         self._scheduled_timeouts = {}
@@ -294,6 +299,7 @@ class Go():
                 'runtime.wasmWrite': _golangimport_runtime_wasmwrite,
                 'runtime.resetMemoryDataView': _golangimport_runtime_resetmemorydataview,
                 'runtime.nanotime1': _golangimport_runtime_nanotime1,
+                'runtime.nanotime': _golangimport_runtime_nanotime1,
                 'runtime.walltime': _golangimport_runtime_walltime,
                 'runtime.scheduleTimeoutEvent': _golangimport_runtime_scheduletimeoutevent,
                 'runtime.clearTimeoutEvent': _golangimport_runtime_cleartimeoutevent,
@@ -319,12 +325,60 @@ class Go():
         }
 
     def run(self, instance: WasmModule):
-        pass
+        self._inst = instance
+        self._values = [
+            float('nan'),
+            0,
+            None,
+            True,
+            False,
+            self._global,
+            self,
+        ]
+        self._refs = {}
+        self.exited = False
+
+        self.mem = mem = cast(WasmMemoryInstance, instance.named_exports['mem'])
+
+        offset = 4096
+
+        def set_ptr(str):
+            nonlocal offset
+            ptr = offset
+            bytes_ = f'{str}\0'.encode('utf-8')
+            mem.data[offset:offset + len(bytes_)] = bytes_
+            offset += len(bytes_)
+
+            if offset % 8 != 0:
+                offset += 8 - (offset % 8)
+
+            return ptr
+
+        argc = len(self.argv)
+
+        argv_ptrs = []
+        for arg in self.argv:
+            argv_ptrs.append(set_ptr(arg))
+
+        argv_ptrs.append(len(self.env))
+
+        for key, value in sorted(self.env.items()):
+            argv_ptrs.append(set_ptr(f'{key}={value}'))
+
+        argv = offset
+        for ptr in argv_ptrs:
+            mem.set_int32(offset, ptr)
+            mem.set_int32(offset + 4, 0)
+            offset += 8
+
+        wrap_function(cast(WasmFunctionInstance, instance.named_exports['run']), instance.store)(argc, argv)
 
     def exit(self, code: int):
         if code != 0:
             print('exit code:', code)
 
+    def _resume(self):
+        wrap_function(cast(WasmFunctionInstance, self._inst.named_exports['resume']), self._inst.store)()
 
     def setTimeout(self, callback, timeout, *args):
         pass

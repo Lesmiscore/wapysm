@@ -208,7 +208,6 @@ class WasmMemory(WasmLimits):
 
 class WasmMemoryInstance(WasmMemory):
     " 4.2.8 Memory Instances "
-    pages: List[bytearray]
     data: bytearray
     maximum: Optional[int]
 

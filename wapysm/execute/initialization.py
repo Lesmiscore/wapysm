@@ -1,5 +1,5 @@
 from typing import Callable, Dict, List, Optional, Union, cast
-from ..execute.utils import WASM_VALUE, lenlen, trap
+from ..execute.utils import WASM_VALUE, trap
 from ..execute.interpreter.runner import interpret_wasm_section, invoke_wasm_function
 from ..execute.context import WASM_EXPORT_OBJECT, WASM_HOST_FUNC, WasmGlobalInstance, WasmHostFunctionInstance, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
 from ..parser.structure import WasmFunctionType, WasmLimits, WasmTableType
@@ -41,7 +41,7 @@ def allocate_host_function(
     else:
         localfunc = WasmHostFunctionInstance()
         localfunc.hostfunc = code
-        localfunc.functype = WasmType([], ['i32'], code.code.expr)
+        localfunc.functype = WasmType([], ['i32'], [])
     module.funcaddrs[len(module.funcaddrs)] = funcaddr
     module.store.funcs[funcaddr] = localfunc
     return funcaddr
@@ -116,7 +116,7 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, Dict[s
     """ (Initialization of) 4.5.3.8. Modules """
     assert parsed.version == 1
     sections: Dict[int, List[WASM_SECTION_TYPE]] = {}
-    for s in range(11):
+    for s in range(12):
         sections[s] = []
     for sec in parsed.sections:
         sections[sec.section_id].append(sec.section_content)
@@ -131,7 +131,7 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, Dict[s
 
     # assert len(types) == len(funcs)
     assert len(funcs) == len(codes)
-    assert len(impts) == lenlen(externval)
+    # assert len(impts) == lenlen(externval)
 
     ret_module = WasmModule()
     ret_module.store = WasmStore()
