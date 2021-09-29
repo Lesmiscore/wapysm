@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Get ojichat.wasm from https://github.com/nao20010128nao/ojichat-wasm/raw/gh-pages/dfe7d4a69c0e31e2dfd6630defe17c08.wasm
 from time import sleep

@@ -20,9 +20,9 @@ def invoke_function_external(funcaddr_or_func: Union[int, WasmFunctionInstance],
             raise Exception(f'Argument type on index {idx} is wrong. ({e} vs {typeof(v)})')
     dummy_mod = WasmModule()
     dummy_mod.store = store
-    stack: List[WASM_VALUE] = []
-    invoke_wasm_function(funcinst, dummy_mod, store, functype.return_types, stack, exec_args)
-    return stack[0] if stack else None
+    stack: List[WASM_VALUE] = list(exec_args)
+    invoke_wasm_function(funcinst, dummy_mod, store, stack)
+    return stack[-1] if stack else None
 
 
 def wrap_function(f: WasmFunctionInstance, store: WasmStore):

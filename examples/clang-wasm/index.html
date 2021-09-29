@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+
+<script type="module">
+  (async function init() {
+    const { instance } = await WebAssembly.instantiateStreaming(
+      fetch("./script.wasm"),
+      {
+        env: {
+          print_console: console.log,
+        }
+      }
+    );
+    instance.exports.gauss_legendre(1);
+    instance.exports.gauss_legendre(2);
+    instance.exports.gauss_legendre(3);
+  })();
+</script>

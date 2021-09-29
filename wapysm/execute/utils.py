@@ -61,7 +61,7 @@ def unclamp_32bit(value: int) -> int:
         # not a negative number
         return value
     # pack the number as unsigned, unpack it as signed
-    return struct.unpack('i>', struct.pack('I>', value))[0]
+    return struct.unpack('>i', struct.pack('>I', value))[0]
 
 def unclamp_64bit(value: int) -> int:
     if value < 0:
@@ -71,7 +71,7 @@ def unclamp_64bit(value: int) -> int:
         # not a negative number
         return value
     # pack the number as unsigned, unpack it as signed
-    return struct.unpack('l>', struct.pack('L>', value))[0]
+    return struct.unpack('>q', struct.pack('>Q', value))[0]
 
 def unclamp_anybit(value: int, bits: VALID_BITS):
     if bits == 32:
