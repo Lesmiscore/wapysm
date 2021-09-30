@@ -280,10 +280,6 @@ def interpret_wasm_section(
         op = code[idx]
         idx += 1
 
-        # try:
-        #     print({k: v[2] for k, v in locals.items()}, locals[3][2])
-        # except:
-        #     pass
         # Control Instructions
         if isinstance(op, Nop):
             continue  # do nothing
@@ -438,7 +434,7 @@ def interpret_wasm_section(
             operand_c2 = stack.pop()
             operand_c1 = stack.pop()
             relopfunc = RELOP_FUNC[f'{op.type}{op.op}']
-            stack.append(clamp(op.type, op.bits, relopfunc(operand_c1[2], operand_c2[2], op.bits)))
+            stack.append(clamp('i', 32, relopfunc(operand_c1[2], operand_c2[2], op.bits)))
         elif isinstance(op, CvtInstructionBase):
             operand_c1 = stack.pop()
             cvtopfunc = CVTOP_FUNC[type(op)]

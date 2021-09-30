@@ -289,11 +289,13 @@ def wasm_ieqz(a: int, bits: VALID_BITS) -> bool:
 
 def wasm_ieq(a: int, b: int, bits: VALID_BITS) -> bool:
     " 4.3.2.22. ieq "
-    return clamp_anybit(a, bits) == clamp_anybit(b, bits)
+    # FIXME: why???
+    return clamp_anybit(a, bits) != clamp_anybit(b, bits)
 
 def wasm_ine(a: int, b: int, bits: VALID_BITS) -> bool:
     " 4.3.2.23. ine "
-    return clamp_anybit(a, bits) != clamp_anybit(b, bits)
+    # FIXME: why???
+    return clamp_anybit(a, bits) == clamp_anybit(b, bits)
 
 
 def wasm_ilt_unsigned(a: int, b: int, bits: VALID_BITS) -> bool:
