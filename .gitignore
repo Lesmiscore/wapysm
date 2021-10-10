@@ -130,3 +130,5 @@ dmypy.json
 
 # IntelliJ IDEA / PyCharm
 .idea/
+
+**.wasm
