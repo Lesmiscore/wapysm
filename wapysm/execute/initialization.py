@@ -1,5 +1,5 @@
 from typing import Callable, Dict, List, Optional, Union, cast
-from ..execute.utils import WASM_VALUE, lenlen, trap
+from ..execute.utils import WASM_VALUE, trap
 from ..execute.interpreter.runner import interpret_wasm_section, invoke_wasm_function
 from ..execute.context import WASM_EXPORT_OBJECT, WASM_HOST_FUNC, WasmGlobalInstance, WasmHostFunctionInstance, WasmLocalFunctionInstance, WasmMemoryInstance, WasmStore
 from ..parser.structure import WasmFunctionType, WasmLimits, WasmTableType
@@ -131,7 +131,7 @@ def initialize_wasm_module(parsed: WasmParsedModule, externval: Dict[str, Dict[s
 
     # assert len(types) == len(funcs)
     assert len(funcs) == len(codes)
-    assert len(impts) < lenlen(externval)
+    # assert len(impts) < lenlen(externval)
 
     ret_module = WasmModule()
     ret_module.store = WasmStore()
