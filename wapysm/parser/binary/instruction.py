@@ -359,4 +359,6 @@ def read_instructions(stream: IO[bytes]) -> Tuple[READ_FINISH_REASON, List[Instr
         else:
             raise Exception('Unreachable 0x%02X' % opcode)
 
+        result[-1]._debug_internal_index = len(result)
+
     return 'eof', result

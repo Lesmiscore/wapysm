@@ -10,7 +10,7 @@ from ...execute.context import (
     WasmLocalFunctionInstance,
     WasmStore, WasmModule)
 from ...execute.utils import (
-    WASM_VALUE, clamp, clamp_32bit, clamp_64bit, clamp_anybit,
+    WASM_VALUE, WasmTrappedException, clamp, clamp_32bit, clamp_64bit, clamp_anybit,
     trap, unclamp_32bit, unclamp_64bit,
     wasm_fnearest, wasm_fsqrt,
     wasm_i32_signed_to_i64, wasm_i32_unsigned_to_i64,
@@ -82,12 +82,12 @@ UNOP_FUNC: Dict[
 }
 BIOP_FUNC: Dict[
     str,
-    Union[
-        # Callable[[int, int, VALID_BITS], int],
-        # Callable[[float, float, VALID_BITS], float],
-        # Callable[[float, int, VALID_BITS], float],
-        Callable[..., Union[int, float]],  # see above for expected types
-    ]
+    # Union[
+    # Callable[[int, int, VALID_BITS], int],
+    # Callable[[float, float, VALID_BITS], float],
+    # Callable[[float, int, VALID_BITS], float],
+    Callable[..., Union[int, float]],  # see above for expected types
+    # ]
 ] = {
     # Integer binary operators
     'iadd': wasm_iadd,
@@ -117,9 +117,7 @@ BIOP_FUNC: Dict[
 }
 TESTOP_FUNC: Dict[
     str,
-    Union[
-        Callable[..., bool],  # see above for expected types
-    ]
+    Callable[..., bool],  # see above for expected types
 ] = {
     # Integer binary operators
     'ieqz': wasm_ieqz,
@@ -129,9 +127,7 @@ TESTOP_FUNC: Dict[
 }
 RELOP_FUNC: Dict[
     str,
-    Union[
-        Callable[..., bool],  # see above for expected types
-    ]
+    Callable[..., bool],  # see above for expected types
 ] = {
     # Integer relation operators
     'ieq': wasm_ieq,
@@ -236,6 +232,28 @@ WASM_LABEL_CONTINUATION = Tuple[
 ]
 
 
+def _wasm_stacktrace(func):
+    def wrapper(code, module, store, locals, resulttype=None):
+        try:
+            return func(code, module, store, locals, resulttype)
+        except WasmTrappedException as ex:
+            try:
+                op_idx = ex.op._debug_internal_index
+            except BaseException:
+                ex.wasm_stacktrace.append('[no stacktrace available]')
+                ex.update_message()
+                raise ex
+
+            surround_ops = list(map(repr, code[:op_idx + 1][-5:]))
+            surround_ops[-1] += ' <<<'
+            ex.wasm_stacktrace.append('\n'.join(surround_ops))
+            ex.update_message()
+            raise
+
+    return wrapper
+
+
+@_wasm_stacktrace
 def interpret_wasm_section(
     # parameters are effectively frame
     code: List[InstructionBase],
@@ -285,6 +303,9 @@ def interpret_wasm_section(
             continue  # do nothing
         elif isinstance(op, Unreachable):
             trap(op)
+        elif isinstance(op, Return):
+            # is this correct?
+            break
         elif isinstance(op, Block):
             # save continuation
             cont: WASM_LABEL_CONTINUATION = continuation()
@@ -391,9 +412,6 @@ def interpret_wasm_section(
                 stack = stack + oldstack[-len(oldrt):]
             # jump!
             continue
-        elif isinstance(op, Return):
-            # is this correct?
-            break
         elif isinstance(op, Call):
             f = store.funcs[module.funcaddrs[op.callidx]]
             invoke_wasm_function(f, module, store, stack)

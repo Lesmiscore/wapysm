@@ -7,7 +7,13 @@ from ..parser.structure import VALTYPE_TYPE
 
 
 class InstructionBase(object):
-    pass
+    _debug_internal_index = 0
+
+    def __repr__(self) -> str:
+        exclude_names = ('instr', 'else_block', '_debug_internal_index')
+        ddr = self.__dict__
+        ddr = dict((k, v) for k, v in ddr.items() if not (k.startswith('__') or k in exclude_names))
+        return f'{type(self).__name__}: {repr(ddr)}' if ddr else super().__repr__()
 
 # 2.4.1 Numeric Instructions
 

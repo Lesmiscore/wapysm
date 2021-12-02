@@ -12,8 +12,17 @@ WASM_VALUE = Tuple[INT_OR_FLOAT, VALID_BITS, Union[int, float]]
 class WasmTrappedException(Exception):
     def __init__(self, msg: str, op: InstructionBase, *operands: object) -> None:
         super().__init__(msg)
+        self.wasm_stacktrace = []
+        self.orig_msg = msg
         self.op: InstructionBase = op
         self.operands: Tuple[object, ...] = operands
+
+    def update_message(self):
+        super().__init__(self.msg)
+
+    @property
+    def msg(self):
+        return '\n\n'.join([self.orig_msg] + self.wasm_stacktrace)
 
 def trap(op, *operands):
     raise WasmTrappedException('trapped: %s' % repr(op), op, *operands)
@@ -289,13 +298,11 @@ def wasm_ieqz(a: int, bits: VALID_BITS) -> bool:
 
 def wasm_ieq(a: int, b: int, bits: VALID_BITS) -> bool:
     " 4.3.2.22. ieq "
-    # FIXME: why???
-    return clamp_anybit(a, bits) != clamp_anybit(b, bits)
+    return clamp_anybit(a, bits) == clamp_anybit(b, bits)
 
 def wasm_ine(a: int, b: int, bits: VALID_BITS) -> bool:
     " 4.3.2.23. ine "
-    # FIXME: why???
-    return clamp_anybit(a, bits) == clamp_anybit(b, bits)
+    return clamp_anybit(a, bits) != clamp_anybit(b, bits)
 
 
 def wasm_ilt_unsigned(a: int, b: int, bits: VALID_BITS) -> bool:
