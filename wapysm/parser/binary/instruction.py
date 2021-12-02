@@ -1,6 +1,8 @@
 # 5.4 Instructions
 import logging
 from typing import IO, Dict, List, Literal, Set, Tuple, Type, cast
+
+from wapysm.opcode.opcode_visitor import walk_bottomup
 from .byteencode import read_blocktype, read_byte, read_float32, read_float64, read_leb128_unsigned, read_vector
 
 from ...opcode import (
@@ -272,7 +274,9 @@ _INSTRUCTION_CACHE: Dict[int, InstructionBase] = {}
 
 READ_FINISH_REASON = Literal['eof', 'else', 'end']
 
-def read_instructions(stream: IO[bytes]) -> Tuple[READ_FINISH_REASON, List[InstructionBase]]:
+_ENABLE_WASM_STACKTRACE = True
+
+def _read_instructions(stream: IO[bytes]) -> Tuple[READ_FINISH_REASON, List[InstructionBase]]:
     result: List[InstructionBase] = []
     while True:
         try:
@@ -288,8 +292,11 @@ def read_instructions(stream: IO[bytes]) -> Tuple[READ_FINISH_REASON, List[Instr
         elif opcode not in OPCODE_TABLE:
             raise Exception('Unknown opcode: 0x%02X' % opcode)
         elif opcode in _INSTRUCTIONS_WITHOUT_OPERANDS:
-            inst = _INSTRUCTION_CACHE.get(opcode) or OPCODE_TABLE[opcode]()
-            _INSTRUCTION_CACHE[opcode] = inst
+            if _ENABLE_WASM_STACKTRACE:
+                inst = OPCODE_TABLE[opcode]()
+            else:
+                inst = _INSTRUCTION_CACHE.get(opcode) or OPCODE_TABLE[opcode]()
+                _INSTRUCTION_CACHE[opcode] = inst
             result.append(inst)
         elif opcode == 0x10:
             inst = Call()
@@ -305,16 +312,16 @@ def read_instructions(stream: IO[bytes]) -> Tuple[READ_FINISH_REASON, List[Instr
         elif opcode == 0x02 or opcode == 0x03:  # block .. end or loop .. end
             inst = cast(BlockInstructionBase, OPCODE_TABLE[opcode]())
             inst.resultype = read_blocktype(stream)
-            cause, inst.instr = read_instructions(stream)
+            cause, inst.instr = _read_instructions(stream)
             if cause != 'end':
                 raise Exception(f'"block" or "loop" instruction must end with "end" instruction. was: {cause}')
             result.append(inst)
         elif opcode == 0x04:  # if .. (else ..) end
             inst = IfElse()
             inst.resultype = read_blocktype(stream)
-            cause, inst.instr = read_instructions(stream)
+            cause, inst.instr = _read_instructions(stream)
             if cause == 'else':
-                cause, inst.else_block = read_instructions(stream)
+                cause, inst.else_block = _read_instructions(stream)
             if cause != 'end':
                 raise Exception(f'"if" branch instruction must end with "end" opcode even if it contains "else" block. was: {cause}')
             result.append(inst)
@@ -359,6 +366,19 @@ def read_instructions(stream: IO[bytes]) -> Tuple[READ_FINISH_REASON, List[Instr
         else:
             raise Exception('Unreachable 0x%02X' % opcode)
 
-        result[-1]._debug_internal_index = len(result)
-
     return 'eof', result
+
+
+if _ENABLE_WASM_STACKTRACE:
+    def read_instructions(stream: IO[bytes]) -> Tuple[READ_FINISH_REASON, List[InstructionBase]]:
+        a, b = _read_instructions(stream)
+        for i in walk_bottomup(b):
+            if not isinstance(i, BlockInstructionBase):
+                continue
+            for idx, op in enumerate(i.instr):
+                op._debug_internal_index = idx
+            for idx, op in enumerate(getattr(i, 'else_block', ())):
+                op._debug_internal_index = idx
+        return a, b
+else:
+    read_instructions = _read_instructions

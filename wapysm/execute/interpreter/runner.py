@@ -237,6 +237,9 @@ def _wasm_stacktrace(func):
         try:
             return func(code, module, store, locals, resulttype)
         except WasmTrappedException as ex:
+            from ...parser.binary.instruction import _ENABLE_WASM_STACKTRACE
+            if not _ENABLE_WASM_STACKTRACE:
+                raise
             try:
                 op_idx = ex.op._debug_internal_index
             except BaseException:
