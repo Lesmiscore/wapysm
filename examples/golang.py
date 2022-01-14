@@ -29,5 +29,5 @@ ojichat = global_object['ojichat']
 print(ojichat)
 
 print(ojichat({
-    'targetName': 'あああ',
+    'targetName': 'せっくはっく',
 }))
